@@ -1,6 +1,6 @@
 <template>
     <div class="container">
-        <h2 class="text-center mb-4">WSH ROOM [B05-18]</h2>
+        <h2 class="text-center mb-4">WSH ROOM [AREA-05]</h2>
 
         <!-- First Row: Sensor Data and Chart -->
         <div class="row">

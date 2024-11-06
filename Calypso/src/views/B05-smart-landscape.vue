@@ -1,6 +1,6 @@
 <template>
     <div class="container">
-        <h2 class="text-center mb-4">SMART LANDSCAPE [B05]</h2>
+        <h2 class="text-center mb-4">SMART LANDSCAPE</h2>
 
         <!-- Sensor Data Section with Dropdown -->
         <div class="row">

@@ -1,6 +1,6 @@
 <template>
     <div class="container">
-        <h2 class="text-center mb-4">VERTICAL TRANSPORT ROOM [B05-15 & 16]</h2>
+        <h2 class="text-center mb-4">HORIZONTAL TRANSPORT ROOM</h2>
 
         <!-- First Row: Sensor Data and Chart -->
         <div class="row">

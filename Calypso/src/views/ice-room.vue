@@ -1,6 +1,6 @@
 <template>
     <div class="container">
-        <h2 class="text-center mb-4">ICE (VDE) ROOM [B05-12]</h2>
+        <h2 class="text-center mb-4">HOT ROOM</h2>
 
         <!-- First Row: Sensor Data and Chart -->
         <div class="row">

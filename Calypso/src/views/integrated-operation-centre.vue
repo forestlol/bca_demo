@@ -1,6 +1,6 @@
 <template>
     <div class="container">
-        <h2 class="text-center mb-4">INTEGRATED OPERATION CENTRE [B05-11]</h2>
+        <h2 class="text-center mb-4">COMMAND CENTRE (AREA E)</h2>
 
         <!-- First Row: Sensor Data and Chart -->
         <div class="row">

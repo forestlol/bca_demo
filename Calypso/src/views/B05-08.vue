@@ -1,6 +1,6 @@
 <template>
     <div class="container">
-        <h2 class="text-center mb-4">COLLABORATIVE DESIGN CENTRE [B05-08]</h2>
+        <h2 class="text-center mb-4">THINKING CENTRE [AREA-08]</h2>
 
         <!-- First Row: Sensor Data and Chart -->
         <div class="row">
