@@ -215,7 +215,7 @@ export default {
         { name: 'Thinking Centre', type: 'semi-circle', operational: 100, link: '/collaborative-design-centre-08', room: '08', deviceId: '24e124710d482388' },
         { name: 'Thinking Centre', type: 'semi-circle', operational: 100, link: '/collaborative-design-centre-09', room: '09', deviceId: '24e124710d482648' },
         { name: 'Smart Washroom', type: 'semi-circle', operational: 100, link: '/smart-washroom-room', room: 'Washroom', deviceId: null },
-        { name: 'Smart Landscape', type: 'semi-circle', operational: 100, link: '/smart-landscape-room', room: 'Landscape', deviceId: null },
+        { name: 'Zen Garden', type: 'semi-circle', operational: 100, link: '/smart-landscape-room', room: 'Garden', deviceId: null },
       ],
 
       fireAlarms: [

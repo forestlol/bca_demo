@@ -17,11 +17,8 @@
 
           </h4>
           <div class="sensor-detection-diagram position-relative" style="height:88%">
-
+            <img src="@/assets/WhatsApp Image 2024-11-07 at 12.52.08 AM.jpeg" alt="Overlay Image" class="overlay-image">
             <!-- Show message if session has not started yet -->
-            <div v-if="!hyperbeamSessionStarted" class="no-session-text">
-              Session has not started yet.
-            </div>
 
             <!-- Display iframe only after session has started -->
             <iframe v-if="hyperbeamSessionStarted" id="hyperbeamIframe" allow="autoplay"
@@ -694,4 +691,16 @@ h2 {
   z-index: 10;
   text-align: center;
 }
+
+.overlay-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 20; /* Higher than other elements to bring it to the front */
+  opacity: 0.6; /* Adjust as needed */
+  pointer-events: none; /* Allows interactions with elements underneath */
+}
+
 </style>
