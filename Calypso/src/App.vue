@@ -1,40 +1,50 @@
 <template>
   <div id="app">
-    <Sidebar @update:expanded="isSidebarExpanded = $event" />
-    <div :class="['main-content', { 'sidebar-expanded': isSidebarExpanded }]">
-      
+    <!-- Header -->
+    <AppHeader @toggle-sidebar="toggleSidebar" :collapsed="sidebarCollapsed" />
+
+    <!-- Sidebar and Main Content -->
+    <div class="layout">
+      <AppSidebar :collapsed="sidebarCollapsed" />
+      <main class="main-content" :class="{ collapsed: sidebarCollapsed }">
+        <router-view />
+      </main>
     </div>
   </div>
 </template>
 
 <script>
-import Sidebar from './components/Sidebar.vue';
-
+import AppSidebar from "./components/AppSidebar.vue";
+import AppHeader from "./components/AppHeader.vue";
 
 export default {
   components: {
-    Sidebar,
+    AppSidebar,
+    AppHeader,
   },
   data() {
     return {
-      isSidebarExpanded: false,
+      sidebarCollapsed: false, // State for sidebar collapse/expand
     };
+  },
+  methods: {
+    toggleSidebar() {
+      this.sidebarCollapsed = !this.sidebarCollapsed; // Toggle sidebar state
+    },
   },
 };
 </script>
 
 <style>
-.mt3 {
-  margin-top: 0rem !important;
-}
-
+/* Main content */
 .main-content {
-  flex: 1;
+  flex-grow: 1;
+  margin-left: 250px; /* Default sidebar width */
+  padding: 20px;
   transition: margin-left 0.3s;
-  margin-left: 60px; /* Default sidebar width */
 }
 
-.main-content.sidebar-expanded {
-  margin-left: 200px; /* Expanded sidebar width */
+.main-content.collapsed {
+  margin-left: 80px; /* Adjust when the sidebar is collapsed */
 }
 </style>
