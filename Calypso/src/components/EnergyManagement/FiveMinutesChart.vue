@@ -28,6 +28,7 @@
             <input type="date" v-model="startDate" @change="fetchData" />
             <input type="date" v-model="endDate" @change="fetchData" />
 
+
             <div class="toggle-buttons">
                 <button v-for="range in timeRanges" :key="range" :class="{ active: selectedTimeRange === range }"
                     @click="selectedTimeRange = range; fetchData()">
@@ -38,12 +39,13 @@
 
         <!-- Chart Section -->
         <div class="chart-section">
-            <PowerLineChart :data="chartData" :labels="chartLabels" />
+            <PowerLineChart ref="chartComponent" :data="chartData" :labels="chartLabels" />
         </div>
     </div>
 </template>
 
 <script>
+import * as XLSX from "xlsx";
 import axios from "axios";
 import PowerLineChart from "@/components/charts/PowerLineChart.vue";
 
@@ -51,8 +53,8 @@ export default {
     components: { PowerLineChart },
     data() {
         const today = new Date();
-        const oneDayAgo = new Date();
-        oneDayAgo.setDate(today.getDate() - 1);
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
 
         return {
             gateways: [],
@@ -61,12 +63,13 @@ export default {
             selectedGateway: "all",
             selectedType: "all",
             selectedDevice: "all",
-            startDate: oneDayAgo.toISOString().split("T")[0],
+            startDate: yesterday.toISOString().split("T")[0],
             endDate: today.toISOString().split("T")[0],
+            chartLabels: [],
+            chartData: [],
             timeRanges: ["5-min", "Hourly", "Daily", "Monthly"],
             selectedTimeRange: "5-min", // Default to 5-minute intervals
-            chartData: [],
-            chartLabels: [],
+            excelData: [], // To store the parsed Excel data
         };
     },
     methods: {
@@ -79,125 +82,258 @@ export default {
                 })
                 .catch((error) => console.error("Error fetching dropdown data:", error));
         },
-        fetchData() {
-            const params = {
-                gateway: this.selectedGateway,
-                type: this.selectedType,
-                device: this.selectedDevice,
-                startDate: this.startDate,
-                endDate: this.endDate,
-                timeRange: this.selectedTimeRange,
-            };
+        // fetchData() {
+        //     const params = {
+        //         gateway: this.selectedGateway,
+        //         type: this.selectedType,
+        //         device: this.selectedDevice,
+        //         startDate: this.startDate,
+        //         endDate: this.endDate,
+        //         timeRange: this.selectedTimeRange,
+        //     };
 
-            axios
-                .get("http://157.230.240.216:5000/message_history", { params })
-                .then((response) => {
-                    this.processChartData(response.data.message_history);
-                })
-                .catch((error) => console.error("Error fetching data:", error));
+        //     axios
+        //         .get("http://157.230.240.216:5000/message_history", { params })
+        //         .then((response) => {
+        //             this.processChartData(response.data.message_history);
+        //         })
+        //         .catch((error) => console.error("Error fetching data:", error));
+        // },
+
+        fetchData() {
+            this.processChartData(this.startDate, this.endDate);
         },
+
         populateDropdowns(data) {
             this.gateways = [...new Set(data.map((entry) => entry.gwSN))];
             this.types = [...new Set(data.map((entry) => entry.type))];
             this.devices = [...new Set(data.map((entry) => entry.device))];
         },
-        processChartData(data) {
-            const is5Min = this.selectedTimeRange === "5-min";
-            const isHourly = this.selectedTimeRange === "Hourly";
-            const isDaily = this.selectedTimeRange === "Daily";
-            const isMonthly = this.selectedTimeRange === "Monthly";
+        // processChartData(data) {
+        //     const is5Min = this.selectedTimeRange === "5-min";
+        //     const isHourly = this.selectedTimeRange === "Hourly";
+        //     const isDaily = this.selectedTimeRange === "Daily";
+        //     const isMonthly = this.selectedTimeRange === "Monthly";
 
-            // Filter data based on the selected date range
-            const filteredData = data.filter((entry) => {
-                const entryDate = new Date(
-                    `${entry.datatime.slice(0, 4)}-${entry.datatime.slice(4, 6)}-${entry.datatime.slice(6, 8)}`
-                );
-                const startDateObj = new Date(this.startDate);
-                const endDateObj = new Date(this.endDate);
+        //     // Filter data based on the selected date range
+        //     const filteredData = data.filter((entry) => {
+        //         const entryDate = new Date(
+        //             `${entry.datatime.slice(0, 4)}-${entry.datatime.slice(4, 6)}-${entry.datatime.slice(6, 8)} ${entry.datatime.slice(8, 10)}:${entry.datatime.slice(10, 12)}`
+        //         );
+        //         const startDateObj = new Date(this.startDate);
+        //         const endDateObj = new Date(this.endDate);
 
-                return entryDate >= startDateObj && entryDate <= endDateObj;
-            });
+        //         return entryDate >= startDateObj && entryDate <= endDateObj;
+        //     });
 
-            const aggregatedData = filteredData.reduce((acc, entry) => {
-                const dateTimeStr = entry.datatime;
+        //     const aggregatedData = filteredData.reduce((acc, entry) => {
+        //         const dateTimeStr = entry.datatime;
 
-                // Extract components from the custom `datatime` format
-                const year = dateTimeStr.slice(0, 4);
-                const month = dateTimeStr.slice(4, 6);
-                const day = dateTimeStr.slice(6, 8);
-                const hour = dateTimeStr.slice(8, 10);
-                const minute = dateTimeStr.slice(10, 12);
+        //         // Extract components from the custom `datatime` format
+        //         const year = dateTimeStr.slice(0, 4);
+        //         const month = dateTimeStr.slice(4, 6);
+        //         const day = dateTimeStr.slice(6, 8);
+        //         const hour = dateTimeStr.slice(8, 10);
+        //         const minute = dateTimeStr.slice(10, 12);
 
-                // Format the key based on the selected time range
-                const key = is5Min
-                    ? `${year}-${month}-${day} ${hour}:${Math.floor(minute / 5) * 5}` // 5-minute interval format
-                    : isHourly
-                        ? `${year}-${month}-${day} ${hour}:00` // Hourly format
-                        : isDaily
-                            ? `${year}-${month}-${day}` // Daily format
-                            : isMonthly
-                                ? `${year}-${month}` // Monthly format
-                                : `${year}-${month}-${day}`; // Default to daily
+        //         // Format the key based on the selected time range
+        //         const key = is5Min
+        //             ? `${year}-${month}-${day} ${hour}:${Math.floor(minute / 5) * 5}` // 5-minute interval format
+        //             : isHourly
+        //                 ? `${year}-${month}-${day} ${hour}:00` // Hourly format
+        //                 : isDaily
+        //                     ? `${year}-${month}-${day}` // Daily format
+        //                     : isMonthly
+        //                         ? `${year}-${month}` // Monthly format
+        //                         : `${year}-${month}-${day}`; // Default to daily
 
-                if (!acc[key]) {
-                    acc[key] = { key, totalPower: 0 };
-                }
+        //         if (!acc[key]) {
+        //             acc[key] = { key, totalPower: 0 };
+        //         }
 
-                // Sum up the power values
-                acc[key].totalPower += entry.EPE || 0;
-                return acc;
-            }, {});
+        //         // Sum up the power values
+        //         acc[key].totalPower += entry.EPE || 0;
+        //         return acc;
+        //     }, {});
 
-            let finalData;
-            if (isDaily) {
-                // Ensure all dates in the past 7 days are represented
-                const now = new Date();
-                const last7Days = Array.from({ length: 7 }, (_, i) => {
-                    const date = new Date();
-                    date.setDate(now.getDate() - i);
-                    const year = date.getFullYear();
-                    const month = String(date.getMonth() + 1).padStart(2, "0");
-                    const day = String(date.getDate()).padStart(2, "0");
-                    return `${year}-${month}-${day}`;
-                }).reverse(); // Reverse to ensure ascending order
+        //     // Calculate differences
+        //     const sortedKeys = Object.keys(aggregatedData).sort((a, b) => new Date(a) - new Date(b));
+        //     const differences = sortedKeys.map((key, index) => {
+        //         if (index === 0) return { key, powerChange: 0 }; // No previous value for the first interval
+        //         const currentPower = aggregatedData[key].totalPower;
+        //         const previousPower = aggregatedData[sortedKeys[index - 1]].totalPower;
+        //         return { key, powerChange: currentPower - previousPower };
+        //     });
 
-                // Ensure all dates are represented
-                finalData = last7Days.map((date) => {
-                    return aggregatedData[date] || { key: date, totalPower: 0 };
+        //     // Populate chart labels and data
+        //     this.chartLabels = differences.map((entry) => entry.key);
+        //     this.chartData = differences.map((entry) => entry.powerChange);
+
+        //     console.log(`${this.selectedTimeRange} Differences:`, differences);
+        // },
+        onDateChange() {
+            // Call processChartData when the date range changes
+            this.processChartData(this.startDate, this.endDate);
+        },
+        processChartData(selectedStartDate, selectedEndDate) {
+            const labels = [];
+            const data = [];
+
+            const filePath = "/assets/Simulated Data.xlsx";
+
+            fetch(filePath)
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.arrayBuffer();
+                })
+                .then((arrayBuffer) => {
+                    const workbook = XLSX.read(arrayBuffer, { type: "array" });
+                    const sheet = workbook.Sheets["Compiled"];
+                    const sheetData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                    const headers = sheetData[0]; // Header row (dates)
+                    const timeColumn = sheetData.slice(1); // Data rows (time + values)
+
+                    // Convert selected dates to Date objects
+                    const startDateTime = new Date(`${selectedStartDate}T00:00:00`);
+                    const endDateTime = new Date(selectedEndDate);
+                    if (selectedEndDate === new Date().toISOString().slice(0, 10)) {
+                        endDateTime.setHours(new Date().getHours());
+                        endDateTime.setMinutes(new Date().getMinutes());
+                    } else {
+                        endDateTime.setHours(23, 59, 59, 999);
+                    }
+
+                    const parsedData = [];
+                    const hourlyData = {};
+                    const dailyData = {};
+                    const monthlyData = {};
+
+                    timeColumn.forEach((row) => {
+                        const timeValue = row[0]; // Time column (Excel time fraction)
+                        const excelTimeToJS = (timeFraction) => {
+                            const totalSeconds = Math.round(timeFraction * 24 * 60 * 60);
+                            const hours = Math.floor(totalSeconds / 3600);
+                            const minutes = Math.floor((totalSeconds % 3600) / 60);
+                            return `${hours.toString().padStart(2, "0")}:${minutes
+                                .toString()
+                                .padStart(2, "0")}`;
+                        };
+
+                        const time = excelTimeToJS(timeValue); // Convert Excel time fraction to hh:mm
+
+                        headers.slice(1).forEach((header, index) => {
+                            let date;
+                            if (typeof header === "number") {
+                                const parsedDate = XLSX.SSF.parse_date_code(header);
+                                date = new Date(parsedDate.y, parsedDate.m - 1, parsedDate.d);
+                            } else {
+                                date = new Date(header);
+                            }
+
+                            const currentDateTime = new Date(`${date.toISOString().slice(0, 10)}T${time}`);
+
+                            if (
+                                currentDateTime >= startDateTime &&
+                                currentDateTime <= endDateTime
+                            ) {
+                                const timestamp = `${date.toISOString().slice(0, 10)} ${time}`;
+                                const value = parseFloat(row[index + 1] || 0);
+
+                                if (this.selectedTimeRange === "5-min") {
+                                    parsedData.push({ timestamp, value });
+                                } else if (this.selectedTimeRange === "Hourly") {
+                                    // Group data by hourly intervals
+                                    const hour = currentDateTime.getHours();
+                                    const hourKey = `${date.toISOString().slice(0, 10)} ${hour}:00`;
+                                    if (!hourlyData[hourKey]) {
+                                        hourlyData[hourKey] = { total: 0, count: 0 };
+                                    }
+                                    hourlyData[hourKey].total += value;
+                                    hourlyData[hourKey].count += 1;
+                                } else if (this.selectedTimeRange === "Daily") {
+                                    // Group data by daily intervals
+                                    const dayKey = date.toISOString().slice(0, 10);
+                                    if (!dailyData[dayKey]) {
+                                        dailyData[dayKey] = 0;
+                                    }
+                                    dailyData[dayKey] += value;
+                                } else if (this.selectedTimeRange === "Monthly") {
+                                    // Group data by monthly intervals
+                                    const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1)
+                                        .toString()
+                                        .padStart(2, "0")}`;
+                                    if (!monthlyData[monthKey]) {
+                                        monthlyData[monthKey] = 0;
+                                    }
+                                    monthlyData[monthKey] += value;
+                                }
+                            }
+                        });
+                    });
+
+                    if (this.selectedTimeRange === "5-min") {
+                        // Sort the parsed data by timestamp
+                        parsedData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+                        parsedData.forEach((entry) => {
+                            labels.push(entry.timestamp);
+                            data.push(entry.value);
+                        });
+                    } else if (this.selectedTimeRange === "Hourly") {
+                        // Process hourly data
+                        const sortedHourlyKeys = Object.keys(hourlyData).sort(
+                            (a, b) => new Date(a) - new Date(b)
+                        );
+
+                        sortedHourlyKeys.forEach((key) => {
+                            labels.push(key);
+                            data.push(
+                                parseFloat((hourlyData[key].total / hourlyData[key].count).toFixed(2))
+                            );
+                        });
+                    } else if (this.selectedTimeRange === "Daily") {
+                        // Process daily data
+                        const sortedDailyKeys = Object.keys(dailyData).sort(
+                            (a, b) => new Date(a) - new Date(b)
+                        );
+
+                        sortedDailyKeys.forEach((key) => {
+                            labels.push(key);
+                            data.push(dailyData[key]); // Total sum for the day
+                        });
+                    } else if (this.selectedTimeRange === "Monthly") {
+                        // Process monthly data
+                        const sortedMonthlyKeys = Object.keys(monthlyData).sort(
+                            (a, b) => new Date(a) - new Date(b)
+                        );
+
+                        sortedMonthlyKeys.forEach((key) => {
+                            labels.push(key);
+                            data.push(monthlyData[key]); // Total sum for the month
+                        });
+                    }
+
+                    this.chartLabels = labels;
+                    this.chartData = data;
+
+                    this.updateChart(); // Refresh the chart
+                })
+                .catch((error) => {
+                    console.error("Error reading Excel file:", error);
                 });
-            } else if (isMonthly) {
-                // Ensure all months in the selected date range are represented
-                const startDateObj = new Date(this.startDate);
-                const endDateObj = new Date(this.endDate);
-
-                const monthsInRange = [];
-                while (startDateObj <= endDateObj) {
-                    const year = startDateObj.getFullYear();
-                    const month = String(startDateObj.getMonth() + 1).padStart(2, "0");
-                    monthsInRange.push(`${year}-${month}`);
-                    startDateObj.setMonth(startDateObj.getMonth() + 1); // Move to the next month
-                }
-
-                finalData = monthsInRange.map((month) => {
-                    return aggregatedData[month] || { key: month, totalPower: 0 };
-                });
-            } else {
-                // For other ranges, use the aggregated data directly
-                finalData = Object.values(aggregatedData);
-            }
-
-            // Populate chart labels and data
-            this.chartLabels = finalData.map((entry) => entry.key);
-            this.chartData = finalData.map((entry) => entry.totalPower);
-
-            console.log("Filtered Data:", filteredData);
-            console.log("Final Chart Labels:", this.chartLabels);
-            console.log("Final Chart Data:", this.chartData);
-        }
+        },
+        updateChart() {
+            // Explicitly update the chart component after data changes
+            this.$refs.chartComponent.renderChart(); // Ensure you have a ref set on your chart component
+        },
     },
     mounted() {
         this.fetchDropdownData();
         this.fetchData();
+        this.processChartData(this.startDate, this.endDate);
     },
 };
 </script>

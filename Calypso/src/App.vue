@@ -42,6 +42,7 @@ export default {
   margin-left: 250px; /* Default sidebar width */
   padding: 20px;
   transition: margin-left 0.3s;
+  background-color: #f5f7fa;
 }
 
 .main-content.collapsed {

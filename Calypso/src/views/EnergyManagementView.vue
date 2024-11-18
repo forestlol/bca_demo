@@ -17,29 +17,30 @@
             </div>
             <!-- Top Cards -->
             <div class="top-cards">
-                <DashboardCard color="green" title="Power Usage Today" :value="powerUsageToday.toFixed(2) + ' kWh'"
+                <DashboardCard color="#625a9b" title="Power Usage Today" :value="powerUsageToday.toFixed(2) + ' kWh'"
                     description="Power Today">
                     <template #icon>
-                        <i class="fas fa-chart-bar"></i>
+                        <i class="fas fa-bolt"></i>
                     </template>
                 </DashboardCard>
-                <DashboardCard color="blue" title="Power Usage This Month" :value="totalActivities + ' Activities'"
-                    description="Activities This Month">
+                <DashboardCard color="#42abb7" title="Power Usage This Month" :value="totalPowerUsageThisMonth + ' kWh'"
+                    description="Power Usage This Month">
                     <template #icon>
-                        <i class="fas fa-users"></i>
+                        <i class="fas fa-bolt"></i>
                     </template>
                 </DashboardCard>
-                <DashboardCard color="purple" title="Total Gateways" :value="totalGateways + ' Gateway(s)'"
-                    description="Unique Gateways in Use">
+                <DashboardCard color="#00484a" title="Device Power Usage (Highest)" :value="highestPowerUsage"
+                    description="Highest Power Consumption">
                     <template #icon>
-                        <i class="fas fa-network-wired"></i>
+                        <i class="fas fa-bolt"></i>
                     </template>
                 </DashboardCard>
 
-                <DashboardCard color="orange" title="Power Efficiency" value="Normal"
+
+                <DashboardCard color="#245d75" title="Power Efficiency" value="Normal"
                     description="Valid Until 30 June 2025">
                     <template #icon>
-                        <i class="fas fa-shopping-cart"></i>
+                        <i class="fas fa-bolt"></i>
                     </template>
                 </DashboardCard>
             </div>
@@ -80,7 +81,7 @@
 
 
 <script>
-import axios from "axios";
+import * as XLSX from "xlsx";
 import DashboardCard from "@/components/DashboardCard.vue";
 import PowerHourlyChart from "../components/PowerHourlyChart.vue";
 import PowerDailyChart from "../components/PowerDailyChart.vue";
@@ -93,14 +94,13 @@ export default {
     },
     data() {
         return {
-            powerUsageToday: 0, // Total power usage today
-            totalActivities: 0, // Count of all activities
-            totalGateways: 0, // Count of unique gateways
+            powerUsageToday: 0, // Initialize as a number
+            totalPowerUsageThisMonth: 0, // Initialize as a number
+            highestPowerUsage: "0 kWh", // Default as a string if it's a string
+            totalGateways: 0,
             hourlyChartData: [], // Hourly chart data
             dailyChartData: [], // Daily chart data
             intervalId: null, // For periodic data fetching
-
-            // Floorplan dropdown options
             floorplanOptions: [
                 { label: "B05-11/12", value: "B05-11-12.png" },
                 { label: "B05-13/14", value: "B05-13-14.png" },
@@ -111,47 +111,90 @@ export default {
     },
     methods: {
         fetchData() {
-            axios
-                .get("http://157.230.240.216:5000/message_history")
+            const filePath = "/assets/Simulated Data.xlsx";
+
+            fetch(filePath)
                 .then((response) => {
-                    const data = response.data.message_history;
-                    console.log("API Data:", data); // Debugging log
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.arrayBuffer();
+                })
+                .then((arrayBuffer) => {
+                    const workbook = XLSX.read(arrayBuffer, { type: "array" });
+                    const sheet = workbook.Sheets["Compiled"];
+                    const sheetData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-                    // Get the current month and year
-                    const now = new Date();
-                    const currentMonth = String(now.getMonth() + 1).padStart(2, "0"); // Ensure 2-digit month
-                    const currentYear = String(now.getFullYear());
+                    const headers = sheetData[0]; // Header row (dates)
+                    const timeColumn = sheetData.slice(1); // Data rows (time + values)
 
-                    // Filter entries for the current month and year
-                    const activitiesThisMonth = data.filter((entry) => {
-                        if (!entry || !entry.datatime) return false; // Skip invalid entries
+                    const today = new Date();
+                    const currentMonth = String(today.getMonth() + 1).padStart(2, "0"); // 2-digit month
+                    const currentYear = String(today.getFullYear()); // Current year
+                    const todayDate = today.toISOString().slice(0, 10); // Format YYYY-MM-DD
 
-                        const entryYear = entry.datatime.substring(0, 4); // Extract year
-                        const entryMonth = entry.datatime.substring(4, 6); // Extract month
+                    let powerUsageToday = 0;
+                    let powerUsageThisMonth = 0;
+                    let highestPowerUsage = { value: 0, date: "", time: "" }; // For the 3rd card
 
-                        return entryYear === currentYear && entryMonth === currentMonth; // Match year and month
+                    timeColumn.forEach((row) => {
+                        headers.slice(1).forEach((header, index) => {
+                            let date;
+                            if (typeof header === "number") {
+                                const parsedDate = XLSX.SSF.parse_date_code(header);
+                                date = new Date(parsedDate.y, parsedDate.m - 1, parsedDate.d);
+                            } else {
+                                date = new Date(header);
+                            }
+
+                            const currentDate = date.toISOString().slice(0, 10); // Extract date in YYYY-MM-DD format
+                            const value = parseFloat(row[index + 1] || 0); // Current value
+
+                            // Check if the date matches today
+                            if (currentDate === todayDate) {
+                                powerUsageToday += value; // Accumulate today's power usage
+                            }
+
+                            // Check if the date matches the current month and year
+                            if (currentDate.startsWith(`${currentYear}-${currentMonth}`)) {
+                                powerUsageThisMonth += value; // Accumulate this month's power usage
+                            }
+
+                            // Track the highest power usage
+                            if (value > highestPowerUsage.value) {
+                                const timeFraction = row[0]; // Time fraction (e.g., 0.5 = 12:00 PM)
+                                const excelTimeToJS = (fraction) => {
+                                    const totalSeconds = Math.round(fraction * 24 * 60 * 60);
+                                    const hours = Math.floor(totalSeconds / 3600);
+                                    const minutes = Math.floor((totalSeconds % 3600) / 60);
+                                    return `${hours.toString().padStart(2, "0")}:${minutes
+                                        .toString()
+                                        .padStart(2, "0")}`;
+                                };
+                                const time = excelTimeToJS(timeFraction); // Convert to hh:mm
+
+                                highestPowerUsage = {
+                                    value,
+                                    date: currentDate,
+                                    time,
+                                };
+                            }
+                        });
                     });
 
-                    // Set total activities for the current month
-                    this.totalActivities = activitiesThisMonth.length;
-                    console.log("Total Activities This Month:", this.totalActivities);
+                    // Update the card values
+                    this.powerUsageToday = parseFloat(powerUsageToday.toFixed(2));
+                    this.totalPowerUsageThisMonth = parseFloat(powerUsageThisMonth.toFixed(2));
+                    this.highestPowerUsage = `${highestPowerUsage.value.toFixed(
+                        2
+                    )} kWh`;
 
-                    // Power Usage Today
-                    const today = new Date().toISOString().slice(0, 10); // Get today's date
-                    this.powerUsageToday = data
-                        .filter((entry) => entry.datatime.startsWith(today.replace(/-/g, "")))
-                        .reduce((sum, entry) => sum + (entry.EPI || 0), 0);
-
-                    // Unique Gateways
-                    const gateways = new Set(data.map((entry) => entry.GwSN));
-                    this.totalGateways = gateways.size;
-
-                    // Process data for charts
-                    this.hourlyChartData = this.processHourlyData(data);
-                    this.dailyChartData = this.processDailyData(data);
+                    console.log("Power Usage Today:", this.powerUsageToday);
+                    console.log("Power Usage This Month:", this.totalPowerUsageThisMonth);
+                    console.log("Highest Power Usage:", this.highestPowerUsage);
                 })
                 .catch((error) => {
-                    console.error("Failed to fetch data:", error);
+                    console.error("Error reading Excel file:", error);
                 });
         },
         navigateToPage(path) {
@@ -211,11 +254,107 @@ export default {
         changeFloorplan() {
             console.log(`Floorplan changed to: ${this.selectedImage}`);
         },
+        fetchChartData() {
+            const filePath = "/assets/Simulated Data.xlsx";
+
+            fetch(filePath)
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.arrayBuffer();
+                })
+                .then((arrayBuffer) => {
+                    const workbook = XLSX.read(arrayBuffer, { type: "array" });
+                    const sheet = workbook.Sheets["Compiled"];
+                    const sheetData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                    const headers = sheetData[0]; // Header row (dates)
+                    const timeColumn = sheetData.slice(1); // Data rows (time + values)
+
+                    // Get today's date
+                    const today = new Date();
+                    const todayDate = today.toISOString().slice(0, 10);
+
+                    // Calculate hourly data for today
+                    const hourlyData = Array(24).fill(0); // Initialize 24-hour array
+                    timeColumn.forEach((row) => {
+                        const timeFraction = row[0]; // Time column (fraction)
+                        const hour = Math.floor(timeFraction * 24); // Extract the hour (0-23)
+                        headers.slice(1).forEach((header, index) => {
+                            let date;
+                            if (typeof header === "number") {
+                                const parsedDate = XLSX.SSF.parse_date_code(header);
+                                date = new Date(parsedDate.y, parsedDate.m - 1, parsedDate.d);
+                            } else {
+                                date = new Date(header);
+                            }
+
+                            const currentDate = date.toISOString().slice(0, 10); // Format YYYY-MM-DD
+                            if (currentDate === todayDate) {
+                                const value = parseFloat(row[index + 1] || 0);
+                                hourlyData[hour] += value; // Add value to the respective hour
+                            }
+                        });
+                    });
+
+                    // Format data for hourly chart
+                    this.hourlyChartData = hourlyData.map((value, index) => ({
+                        label: `${String(index).padStart(2, "0")}:00`,
+                        value: parseFloat(value.toFixed(2)),
+                    }));
+
+                    // Calculate daily data for the last 7 days
+                    const dailyData = {};
+                    const last7Days = Array.from({ length: 7 }, (_, i) => {
+                        const date = new Date(today);
+                        date.setDate(today.getDate() - i);
+                        const formattedDate = `${date.getFullYear()}-${String(
+                            date.getMonth() + 1
+                        ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+                        return formattedDate;
+                    });
+
+                    timeColumn.forEach((row) => {
+                        headers.slice(1).forEach((header, index) => {
+                            let date;
+                            if (typeof header === "number") {
+                                const parsedDate = XLSX.SSF.parse_date_code(header);
+                                date = new Date(parsedDate.y, parsedDate.m - 1, parsedDate.d);
+                            } else {
+                                date = new Date(header);
+                            }
+
+                            const currentDate = date.toISOString().slice(0, 10);
+                            const value = parseFloat(row[index + 1] || 0);
+
+                            if (last7Days.includes(currentDate)) {
+                                if (!dailyData[currentDate]) {
+                                    dailyData[currentDate] = 0;
+                                }
+                                dailyData[currentDate] += value; // Accumulate daily usage
+                            }
+                        });
+                    });
+
+                    // Format data for daily chart
+                    this.dailyChartData = last7Days.map((date) => ({
+                        label: date,
+                        value: parseFloat((dailyData[date] || 0).toFixed(2)),
+                    }));
+
+                    console.log("Hourly Chart Data:", this.hourlyChartData);
+                    console.log("Daily Chart Data:", this.dailyChartData);
+                })
+                .catch((error) => {
+                    console.error("Error reading Excel file:", error);
+                });
+        },
     },
     mounted() {
         // Fetch data immediately
         this.fetchData();
-
+        this.fetchChartData();
         // Set an interval to fetch data every 5 minutes
         this.intervalId = setInterval(() => {
             this.fetchData();
@@ -258,30 +397,64 @@ export default {
 }
 
 .card {
-    background-color: white;
-    border: 1px solid #e5e7eb;
+    background-color: #f5f5f5;
+    /* Light gray background for monotone */
+    border: 1px solid #e0e0e0;
+    /* Subtle border */
     border-radius: 8px;
-    padding: 0;
-    /* Remove padding for the chart to fit edge to edge */
-    position: relative;
+    padding: 20px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    /* Light shadow for depth */
     display: flex;
+    flex-direction: column;
     align-items: center;
-    /* Center content vertically */
-    justify-content: center;
-    /* Center content horizontally */
-    overflow: hidden;
-    /* Prevent overflow */
-    height: 100%;
-    /* Allow the card to scale with the content */
-    margin: 0 auto;
-    /* Center the card */
+    text-align: center;
+    color: #4a4a4a;
+    /* Neutral text color */
 }
 
 .card h3 {
-    margin: 0 0 15px;
     font-size: 16px;
     font-weight: bold;
+    margin-bottom: 10px;
+    color: #3a3a3a;
+    /* Slightly darker text for headers */
+}
+
+.card .description {
+    font-size: 14px;
+    margin-top: 5px;
+    color: #6a6a6a;
+    /* Slightly lighter text for descriptions */
+}
+
+.card .value {
+    font-size: 20px;
+    font-weight: bold;
+    margin-top: 10px;
+    color: #2a2a2a;
+    /* Primary value in darker gray */
+}
+
+.add-button {
+    background-color: #d1d1d1;
+    /* Neutral button color */
+    color: #4a4a4a;
+    /* Button text in monotone */
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    font-size: 18px;
+    cursor: pointer;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+.add-button:hover {
+    background-color: #b0b0b0;
+    /* Slightly darker on hover */
 }
 
 .add-button {

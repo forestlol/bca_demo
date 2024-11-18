@@ -31,12 +31,36 @@
                                 :class="{ rotated: dropdowns.energyManagement }" v-if="!collapsed"></i>
                         </div>
                         <ul v-if="dropdowns.energyManagement && !collapsed" class="submenu">
-                            <li><router-link to="/energy-management">Overview</router-link></li>
-                            <li><router-link to="/energy-management/5-minutes">5 Minutes Chart</router-link></li>
-                            <li><router-link to="/energy-management/hourly">Hourly Chart</router-link></li>
-                            <li><router-link to="/energy-management/daily">Daily Chart</router-link></li>
-                            <li><router-link to="/energy-management/monthly">Monthly Chart</router-link></li>
-                            <li><router-link to="/energy-management/deviceFloorplan">Device Floorplan</router-link></li>
+                            <li>
+                                <router-link to="/energy-management" class="menu-link">
+                                    Overview
+                                </router-link>
+                            </li>
+                            <li>
+                                <router-link to="/energy-management/5-minutes" class="menu-link">
+                                    5 Minutes Chart
+                                </router-link>
+                            </li>
+                            <li>
+                                <router-link to="/energy-management/hourly" class="menu-link">
+                                    Hourly Chart
+                                </router-link>
+                            </li>
+                            <li>
+                                <router-link to="/energy-management/daily" class="menu-link">
+                                    Daily Chart
+                                </router-link>
+                            </li>
+                            <li>
+                                <router-link to="/energy-management/monthly" class="menu-link">
+                                    Monthly Chart
+                                </router-link>
+                            </li>
+                            <li>
+                                <router-link to="/energy-management/deviceFloorplan" class="menu-link">
+                                    Device Floorplan
+                                </router-link>
+                            </li>
                         </ul>
                     </li>
 
@@ -193,5 +217,17 @@ export default {
     color: white;
 }
 
+.menu-link.router-link-active {
+    background: #334155;
+    color: #ffffff;
+    /* Highlight text */
+    font-weight: bold;
+    /* Optional: Make active links bold */
+}
 
+.menu-link.router-link-exact-active {
+    background: #475569;
+    color: #ffffff;
+    font-weight: bold;
+}
 </style>

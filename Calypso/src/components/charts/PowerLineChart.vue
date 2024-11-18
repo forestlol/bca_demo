@@ -42,7 +42,9 @@ export default {
                             backgroundColor: "rgba(0, 123, 255, 0.2)",
                             pointBackgroundColor: "#007bff",
                             fill: true,
-                            tension: 0.4,
+                            tension: 0, // Make lines sharp instead of cursive
+                            borderWidth: 2, // Adjust line thickness
+                            pointRadius: 3, // Optional: Adjust the size of points
                         },
                     ],
                 },
