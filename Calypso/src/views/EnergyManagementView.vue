@@ -26,13 +26,13 @@
                 <DashboardCard color="#42abb7" title="Power Usage This Month" :value="totalPowerUsageThisMonth + ' kWh'"
                     description="Power Usage This Month">
                     <template #icon>
-                        <i class="fas fa-bolt"></i>
+                        <i class="fas fa-calendar-alt"></i>
                     </template>
                 </DashboardCard>
                 <DashboardCard color="#00484a" title="Device Power Usage (Highest)" :value="highestPowerUsage"
                     description="Highest Power Consumption">
                     <template #icon>
-                        <i class="fas fa-bolt"></i>
+                        <i class="fas fa-plug"></i>
                     </template>
                 </DashboardCard>
 
@@ -40,7 +40,7 @@
                 <DashboardCard color="#245d75" title="Power Efficiency" value="Normal"
                     description="Valid Until 30 June 2025">
                     <template #icon>
-                        <i class="fas fa-bolt"></i>
+                        <i class="fas fa-leaf"></i>
                     </template>
                 </DashboardCard>
             </div>
