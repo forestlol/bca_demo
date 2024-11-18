@@ -16,7 +16,7 @@
 
         <!-- Footer -->
         <div class="card-footer">
-            <button class="view-more">VIEW MORE</button>
+            <button class="view-more" @click="navigateToLink">{{ linkText }}</button>
             <i class="fas fa-chevron-right footer-arrow"></i>
         </div>
     </div>
@@ -41,9 +41,25 @@ export default {
             type: String,
             required: true,
         },
+        link: {
+            type: String,
+            required: false, // Optional, in case some cards don't need links
+        },
+        linkText: {
+            type: String,
+            default: "VIEW MORE", // Default text for the button
+        },
+    },
+    methods: {
+        navigateToLink() {
+            if (this.link) {
+                this.$router.push(this.link); // Use Vue Router to navigate
+            }
+        },
     },
 };
 </script>
+
 
 <style scoped>
 .dashboard-card {

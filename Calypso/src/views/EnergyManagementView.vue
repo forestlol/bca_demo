@@ -18,13 +18,13 @@
             <!-- Top Cards -->
             <div class="top-cards">
                 <DashboardCard color="#625a9b" title="Power Usage Today" :value="powerUsageToday.toFixed(2) + ' kWh'"
-                    description="Power Today">
+                    description="Power Today" link="/energy-management/daily">
                     <template #icon>
                         <i class="fas fa-bolt"></i>
                     </template>
                 </DashboardCard>
                 <DashboardCard color="#42abb7" title="Power Usage This Month" :value="totalPowerUsageThisMonth + ' kWh'"
-                    description="Power Usage This Month">
+                    description="Power Usage This Month" link="/energy-management/monthly">
                     <template #icon>
                         <i class="fas fa-calendar-alt"></i>
                     </template>
@@ -125,19 +125,53 @@ export default {
                     const sheet = workbook.Sheets["Compiled"];
                     const sheetData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-                    const headers = sheetData[0]; // Header row (dates)
+                    const headers = sheetData[0]; // Header row (timestamps for dates)
                     const timeColumn = sheetData.slice(1); // Data rows (time + values)
 
-                    const today = new Date();
-                    const currentMonth = String(today.getMonth() + 1).padStart(2, "0"); // 2-digit month
-                    const currentYear = String(today.getFullYear()); // Current year
-                    const todayDate = today.toISOString().slice(0, 10); // Format YYYY-MM-DD
+                    const now = new Date(); // Current date and time
+                    const startMonthDate = new Date(now.getFullYear(), now.getMonth(), 10, 0, 0, 0); // 10th of the month
+                    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0); // Today 00:00:00
 
+                    let powerUsageBeforeToday = 0;
                     let powerUsageToday = 0;
-                    let powerUsageThisMonth = 0;
                     let highestPowerUsage = { value: 0, date: "", time: "" }; // For the 3rd card
 
-                    timeColumn.forEach((row) => {
+                    // Loop through each row of the Excel data
+                    timeColumn.forEach((row, rowIndex) => {
+                        let timestamp = row[0]; // First column contains timestamps
+                        let rowTime;
+
+                        // Handle timestamp as Excel date-time format or string
+                        if (typeof timestamp === "number") {
+                            // Convert Excel date-time number to JavaScript Date object
+                            const parsedDate = XLSX.SSF.parse_date_code(timestamp);
+                            rowTime = new Date(
+                                todayStart.getFullYear(),
+                                todayStart.getMonth(),
+                                todayStart.getDate(),
+                                parsedDate.H,
+                                parsedDate.M,
+                                parsedDate.S
+                            );
+                        } else if (typeof timestamp === "string") {
+                            // Convert string time (e.g., "12:05:00 am") to JavaScript Date object
+                            const [hours, minutes, period] = timestamp
+                                .replace(/:\d{2}\s(am|pm)$/i, "")
+                                .split(/[: ]/);
+                            const hours24 =
+                                period.toLowerCase() === "pm" && parseInt(hours) !== 12
+                                    ? parseInt(hours) + 12
+                                    : period.toLowerCase() === "am" && parseInt(hours) === 12
+                                        ? 0
+                                        : parseInt(hours);
+                            rowTime = new Date(todayStart);
+                            rowTime.setHours(hours24, parseInt(minutes), 0, 0);
+                        } else {
+                            console.error(`Invalid timestamp format: ${timestamp}`);
+                            return;
+                        }
+
+                        // Process columns (dates from headers)
                         headers.slice(1).forEach((header, index) => {
                             let date;
                             if (typeof header === "number") {
@@ -147,50 +181,52 @@ export default {
                                 date = new Date(header);
                             }
 
-                            const currentDate = date.toISOString().slice(0, 10); // Extract date in YYYY-MM-DD format
                             const value = parseFloat(row[index + 1] || 0); // Current value
 
-                            // Check if the date matches today
-                            if (currentDate === todayDate) {
-                                powerUsageToday += value; // Accumulate today's power usage
+                            // Combine date and row time
+                            const fullTimestamp = new Date(date);
+                            fullTimestamp.setHours(rowTime.getHours());
+                            fullTimestamp.setMinutes(rowTime.getMinutes());
+                            fullTimestamp.setSeconds(0);
+
+                            // First Calculation: Add data from 10 November to 18 November (inclusive)
+                            if (fullTimestamp >= startMonthDate && fullTimestamp < todayStart) {
+                                powerUsageBeforeToday += value;
+                                console.log(
+                                    `DEBUG: Adding to usage before today. Row: ${rowIndex}, Time: ${fullTimestamp}, Value: ${value}`
+                                );
                             }
 
-                            // Check if the date matches the current month and year
-                            if (currentDate.startsWith(`${currentYear}-${currentMonth}`)) {
-                                powerUsageThisMonth += value; // Accumulate this month's power usage
+                            // Second Calculation: Add data for today up to the current time
+                            if (fullTimestamp >= todayStart && fullTimestamp <= now) {
+                                powerUsageToday += value;
+                                console.log(
+                                    `DEBUG: Adding to today's usage. Row: ${rowIndex}, Time: ${fullTimestamp}, Value: ${value}`
+                                );
                             }
 
                             // Track the highest power usage
                             if (value > highestPowerUsage.value) {
-                                const timeFraction = row[0]; // Time fraction (e.g., 0.5 = 12:00 PM)
-                                const excelTimeToJS = (fraction) => {
-                                    const totalSeconds = Math.round(fraction * 24 * 60 * 60);
-                                    const hours = Math.floor(totalSeconds / 3600);
-                                    const minutes = Math.floor((totalSeconds % 3600) / 60);
-                                    return `${hours.toString().padStart(2, "0")}:${minutes
-                                        .toString()
-                                        .padStart(2, "0")}`;
-                                };
-                                const time = excelTimeToJS(timeFraction); // Convert to hh:mm
-
                                 highestPowerUsage = {
                                     value,
-                                    date: currentDate,
-                                    time,
+                                    date: fullTimestamp.toISOString().slice(0, 10),
+                                    time: fullTimestamp.toTimeString().slice(0, 5),
                                 };
                             }
                         });
                     });
 
+                    // Total power usage for this month
+                    const totalPowerUsageThisMonth = powerUsageBeforeToday + powerUsageToday;
+
                     // Update the card values
                     this.powerUsageToday = parseFloat(powerUsageToday.toFixed(2));
-                    this.totalPowerUsageThisMonth = parseFloat(powerUsageThisMonth.toFixed(2));
-                    this.highestPowerUsage = `${highestPowerUsage.value.toFixed(
-                        2
-                    )} kWh`;
+                    this.totalPowerUsageThisMonth = parseFloat(totalPowerUsageThisMonth.toFixed(2));
+                    this.highestPowerUsage = `${highestPowerUsage.value.toFixed(2)} kWh`;
 
-                    console.log("Power Usage Today:", this.powerUsageToday);
-                    console.log("Power Usage This Month:", this.totalPowerUsageThisMonth);
+                    console.log("Power Usage Before Today (10 Nov to 18 Nov):", powerUsageBeforeToday);
+                    console.log("Power Usage Today (Up to Now):", powerUsageToday);
+                    console.log("Total Power Usage This Month:", this.totalPowerUsageThisMonth);
                     console.log("Highest Power Usage:", this.highestPowerUsage);
                 })
                 .catch((error) => {
