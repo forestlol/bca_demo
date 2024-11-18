@@ -198,18 +198,23 @@ export default {
 
                     // Convert selected dates to Date objects
                     const startDateTime = new Date(`${selectedStartDate}T00:00:00`);
-                    const endDateTime = new Date(selectedEndDate);
-                    if (selectedEndDate === new Date().toISOString().slice(0, 10)) {
-                        endDateTime.setHours(new Date().getHours());
-                        endDateTime.setMinutes(new Date().getMinutes());
-                    } else {
-                        endDateTime.setHours(23, 59, 59, 999);
+                    let endDateTime = new Date(`${selectedEndDate}T23:59:59`);
+
+                    const now = new Date(); // Current system date and time
+
+                    // Adjust `endDateTime` if the selected end date is today
+                    if (selectedEndDate === now.toISOString().slice(0, 10)) {
+                        endDateTime = new Date(now); // Set endDateTime to now
                     }
 
+                    console.log("Start DateTime:", startDateTime);
+                    console.log("End DateTime:", endDateTime);
+                    console.log("Current Time (Now):", now);
+
                     const parsedData = [];
-                    const hourlyData = {};
-                    const dailyData = {};
-                    const monthlyData = {};
+                    const hourlyData = {}; // To store aggregated hourly data
+                    const dailyData = {}; // To store aggregated daily data
+                    const monthlyData = {}; // To store aggregated monthly data
 
                     timeColumn.forEach((row) => {
                         const timeValue = row[0]; // Time column (Excel time fraction)
@@ -237,34 +242,36 @@ export default {
 
                             if (
                                 currentDateTime >= startDateTime &&
-                                currentDateTime <= endDateTime
+                                currentDateTime <= now
                             ) {
                                 const timestamp = `${date.toISOString().slice(0, 10)} ${time}`;
                                 const value = parseFloat(row[index + 1] || 0);
 
                                 if (this.selectedTimeRange === "5-min") {
                                     parsedData.push({ timestamp, value });
+
+                                    // Log timestamps being added for today
+                                    if (selectedEndDate === now.toISOString().slice(0, 10)) {
+                                        console.log(`Adding for today: ${currentDateTime.toISOString()}, Value: ${value}`);
+                                    }
                                 } else if (this.selectedTimeRange === "Hourly") {
-                                    // Group data by hourly intervals
-                                    const hour = currentDateTime.getHours();
-                                    const hourKey = `${date.toISOString().slice(0, 10)} ${hour}:00`;
+                                    const hourKey = `${date.toISOString().slice(0, 10)} ${time.split(":")[0]}:00`;
+
                                     if (!hourlyData[hourKey]) {
                                         hourlyData[hourKey] = { total: 0, count: 0 };
                                     }
                                     hourlyData[hourKey].total += value;
                                     hourlyData[hourKey].count += 1;
                                 } else if (this.selectedTimeRange === "Daily") {
-                                    // Group data by daily intervals
                                     const dayKey = date.toISOString().slice(0, 10);
+
                                     if (!dailyData[dayKey]) {
                                         dailyData[dayKey] = 0;
                                     }
                                     dailyData[dayKey] += value;
                                 } else if (this.selectedTimeRange === "Monthly") {
-                                    // Group data by monthly intervals
-                                    const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1)
-                                        .toString()
-                                        .padStart(2, "0")}`;
+                                    const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}`;
+
                                     if (!monthlyData[monthKey]) {
                                         monthlyData[monthKey] = 0;
                                     }
