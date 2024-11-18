@@ -53,3 +53,10 @@ export default {
     },
 };
 </script>
+
+<style scoped>
+.chart-container {
+    position: relative;
+    width: 100%; /* Set the height to suit your layout */
+}
+</style>

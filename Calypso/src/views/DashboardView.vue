@@ -408,4 +408,10 @@ export default {
     font-weight: bold;
     color: #333;
 }
+
+.chart-card canvas {
+    flex-grow: 1; /* Makes the canvas/chart fill the available space */
+    width: 100% !important; /* Ensures it stretches to the container width */
+    height: auto !important; /* Ensures proportional scaling */
+}
 </style>
