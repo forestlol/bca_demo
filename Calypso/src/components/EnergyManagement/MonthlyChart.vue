@@ -106,8 +106,16 @@ export default {
 
         populateDropdowns(data) {
             this.gateways = [...new Set(data.map((entry) => entry.gwSN))];
-            this.types = [...new Set(data.map((entry) => entry.type))];
+
+            // Modify types: replace "data" with "Individual Devices"
+            this.types = [...new Set(data.map((entry) => entry.type === "data" ? "Individual Devices" : entry.type))];
+
             this.devices = [...new Set(data.map((entry) => entry.device))];
+
+            // Ensure "VRF AIRCON" is included in the types
+            if (!this.types.includes("VRF AIRCON")) {
+                this.types.push("VRF AIRCON");
+            }
         },
         // processChartData(data) {
         //     const is5Min = this.selectedTimeRange === "5-min";

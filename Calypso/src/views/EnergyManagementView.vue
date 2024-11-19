@@ -137,7 +137,7 @@ export default {
                     let highestPowerUsage = { value: 0, date: "", time: "" }; // For the 3rd card
 
                     // Loop through each row of the Excel data
-                    timeColumn.forEach((row, rowIndex) => {
+                    timeColumn.forEach((row) => {
                         let timestamp = row[0]; // First column contains timestamps
                         let rowTime;
 
@@ -192,17 +192,11 @@ export default {
                             // First Calculation: Add data from 10 November to 18 November (inclusive)
                             if (fullTimestamp >= startMonthDate && fullTimestamp < todayStart) {
                                 powerUsageBeforeToday += value;
-                                console.log(
-                                    `DEBUG: Adding to usage before today. Row: ${rowIndex}, Time: ${fullTimestamp}, Value: ${value}`
-                                );
                             }
 
                             // Second Calculation: Add data for today up to the current time
                             if (fullTimestamp >= todayStart && fullTimestamp <= now) {
                                 powerUsageToday += value;
-                                console.log(
-                                    `DEBUG: Adding to today's usage. Row: ${rowIndex}, Time: ${fullTimestamp}, Value: ${value}`
-                                );
                             }
 
                             // Track the highest power usage
@@ -308,50 +302,32 @@ export default {
                     const headers = sheetData[0]; // Header row (dates)
                     const timeColumn = sheetData.slice(1); // Data rows (time + values)
 
-                    // Get today's date
-                    const today = new Date();
-                    const todayDate = today.toISOString().slice(0, 10);
-
-                    // Calculate hourly data for today
-                    const hourlyData = Array(24).fill(0); // Initialize 24-hour array
-                    timeColumn.forEach((row) => {
-                        const timeFraction = row[0]; // Time column (fraction)
-                        const hour = Math.floor(timeFraction * 24); // Extract the hour (0-23)
-                        headers.slice(1).forEach((header, index) => {
-                            let date;
-                            if (typeof header === "number") {
-                                const parsedDate = XLSX.SSF.parse_date_code(header);
-                                date = new Date(parsedDate.y, parsedDate.m - 1, parsedDate.d);
-                            } else {
-                                date = new Date(header);
-                            }
-
-                            const currentDate = date.toISOString().slice(0, 10); // Format YYYY-MM-DD
-                            if (currentDate === todayDate) {
-                                const value = parseFloat(row[index + 1] || 0);
-                                hourlyData[hour] += value; // Add value to the respective hour
-                            }
-                        });
-                    });
-
-                    // Format data for hourly chart
-                    this.hourlyChartData = hourlyData.map((value, index) => ({
-                        label: `${String(index).padStart(2, "0")}:00`,
-                        value: parseFloat(value.toFixed(2)),
-                    }));
-
-                    // Calculate daily data for the last 7 days
-                    const dailyData = {};
+                    const now = new Date(); // Current time
+                    const past24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24 hours ago
                     const last7Days = Array.from({ length: 7 }, (_, i) => {
-                        const date = new Date(today);
-                        date.setDate(today.getDate() - i);
-                        const formattedDate = `${date.getFullYear()}-${String(
-                            date.getMonth() + 1
-                        ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-                        return formattedDate;
+                        const date = new Date(now);
+                        date.setDate(now.getDate() - i);
+                        return date.toISOString().slice(0, 10); // YYYY-MM-DD format
                     });
 
-                    timeColumn.forEach((row) => {
+                    // Initialize arrays for hourly and daily data
+                    const hourlyData = Array(24).fill(0); // 24-hour data
+                    const dailyData = {};
+
+                    // Process each row in the sheet
+                    timeColumn.forEach((row, rowIndex) => {
+                        const timeFraction = row[0]; // First column contains time as a fraction of a day
+                        if (typeof timeFraction !== "number") {
+                            console.warn(`Invalid time format in row ${rowIndex}:`, timeFraction);
+                            return;
+                        }
+
+                        // Convert fractional time (e.g., 0.5 for 12:00 PM) to hours and minutes
+                        const totalMinutes = Math.round(timeFraction * 24 * 60);
+                        const hours = Math.floor(totalMinutes / 60);
+                        const minutes = totalMinutes % 60;
+
+                        // Process each date header (B, C, D, etc.)
                         headers.slice(1).forEach((header, index) => {
                             let date;
                             if (typeof header === "number") {
@@ -361,31 +337,60 @@ export default {
                                 date = new Date(header);
                             }
 
-                            const currentDate = date.toISOString().slice(0, 10);
+                            // Combine the date from the header and the time from column A
+                            const rowTime = new Date(date);
+                            rowTime.setHours(hours, minutes, 0, 0);
+
                             const value = parseFloat(row[index + 1] || 0);
 
-                            if (last7Days.includes(currentDate)) {
-                                if (!dailyData[currentDate]) {
-                                    dailyData[currentDate] = 0;
+                            // Accumulate hourly data for the past 24 hours
+                            if (rowTime >= past24Hours && rowTime <= now) {
+                                const hoursDifference = Math.floor((rowTime - past24Hours) / (1000 * 60 * 60)); // Difference in hours
+                                const hourIndex = hoursDifference;
+                                hourlyData[hourIndex] += value;
+
+                                console.log(
+                                    `Row ${rowIndex}: Adding value ${value} to hour ${hourIndex} (${rowTime})`
+                                );
+                            }
+
+                            // Accumulate daily totals for the last 7 days
+                            const dateKey = rowTime.toISOString().slice(0, 10); // Extract YYYY-MM-DD
+                            if (last7Days.includes(dateKey)) {
+                                if (!dailyData[dateKey]) {
+                                    dailyData[dateKey] = 0;
                                 }
-                                dailyData[currentDate] += value; // Accumulate daily usage
+                                dailyData[dateKey] += value;
                             }
                         });
                     });
 
-                    // Format data for daily chart
-                    this.dailyChartData = last7Days.map((date) => ({
+                    // Format hourly data for the chart
+                    this.hourlyChartData = hourlyData.map((value, index) => {
+                        const hour = new Date(past24Hours);
+                        hour.setHours(past24Hours.getHours() + index);
+                        const formattedLabel = `${String(hour.getHours()).padStart(2, "0")}:00`;
+                        return {
+                            label: formattedLabel,
+                            value: parseFloat(value.toFixed(2)), // Round to 2 decimal places
+                        };
+                    });
+
+                    // Format daily data for the chart
+                    this.dailyChartData = last7Days.reverse().map((date) => ({
                         label: date,
-                        value: parseFloat((dailyData[date] || 0).toFixed(2)),
+                        value: parseFloat((dailyData[date] || 0).toFixed(2)), // Use aggregated value or 0 for missing dates
                     }));
 
+                    // Debugging output
                     console.log("Hourly Chart Data:", this.hourlyChartData);
                     console.log("Daily Chart Data:", this.dailyChartData);
                 })
                 .catch((error) => {
                     console.error("Error reading Excel file:", error);
                 });
-        },
+        }
+
     },
     mounted() {
         // Fetch data immediately
