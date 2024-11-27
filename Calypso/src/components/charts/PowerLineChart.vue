@@ -17,6 +17,10 @@ export default {
             type: Array,
             required: true,
         },
+        baselineData: {
+            type: Array,
+            default: () => [], // Baseline values
+        },
     },
     mounted() {
         this.renderChart();
@@ -24,29 +28,46 @@ export default {
     watch: {
         data: "renderChart",
         labels: "renderChart",
+        baselineData: "renderChart", // Watch for changes in baselineData
     },
     methods: {
         renderChart() {
             // Destroy any previous chart instance to prevent duplication
             if (this.chart) this.chart.destroy();
 
+            const datasets = [
+                {
+                    label: "Power Usage (kWh)",
+                    data: this.data, // Main data
+                    borderColor: "#007bff",
+                    backgroundColor: "rgba(0, 123, 255, 0.2)",
+                    pointBackgroundColor: "#007bff",
+                    fill: true,
+                    tension: 0, // Make lines sharp instead of cursive
+                    borderWidth: 2, // Adjust line thickness
+                    pointRadius: 3, // Optional: Adjust the size of points
+                },
+            ];
+
+            // Add baseline dataset if baselineData exists
+            if (this.baselineData.length > 0) {
+                datasets.push({
+                    label: "Baseline",
+                    data: this.baselineData, // Baseline data
+                    borderColor: "#ff0000", // Red for baseline
+                    borderWidth: 1, // Thinner line for baseline
+                    borderDash: [5, 5], // Dashed line
+                    fill: false, // No fill for baseline
+                    pointRadius: 0, // Remove points
+                    pointStyle: "line", // Ensure a continuous line
+                });
+            }
+
             this.chart = new Chart(this.$refs.chart, {
                 type: "line",
                 data: {
-                    labels: this.labels, // X-axis labels (e.g., dates)
-                    datasets: [
-                        {
-                            label: "Power Usage (kWh)",
-                            data: this.data, // Y-axis values (e.g., power readings)
-                            borderColor: "#007bff",
-                            backgroundColor: "rgba(0, 123, 255, 0.2)",
-                            pointBackgroundColor: "#007bff",
-                            fill: true,
-                            tension: 0, // Make lines sharp instead of cursive
-                            borderWidth: 2, // Adjust line thickness
-                            pointRadius: 3, // Optional: Adjust the size of points
-                        },
-                    ],
+                    labels: this.labels, // X-axis labels
+                    datasets,
                 },
                 options: {
                     responsive: true,
@@ -59,9 +80,9 @@ export default {
                     scales: {
                         x: {
                             ticks: {
-                                autoSkip: true, // Automatically skip labels to avoid clutter
-                                maxRotation: 45, // Maximum label rotation angle
-                                minRotation: 0, // Minimum label rotation angle
+                                autoSkip: true,
+                                maxRotation: 45,
+                                minRotation: 0,
                             },
                         },
                         y: {
@@ -77,7 +98,6 @@ export default {
         },
     },
     beforeUnmount() {
-        // Clean up chart instance to avoid memory leaks
         if (this.chart) this.chart.destroy();
     },
 };

@@ -17,24 +17,28 @@
             </div>
             <!-- Top Cards -->
             <div class="top-cards">
-                <DashboardCard color="#625a9b" title="Power Usage Today" :value="powerUsageToday.toFixed(2) + ' kWh'"
-                    description="Power Today" link="/energy-management/daily">
+                <DashboardCard color="#625a9b" title="Power Usage Today" :value="powerUsageToday"
+                    description="Power Today" link="/energy-management/historical-data">
                     <template #icon>
                         <i class="fas fa-bolt"></i>
                     </template>
                 </DashboardCard>
-                <DashboardCard color="#42abb7" title="Power Usage This Month" :value="totalPowerUsageThisMonth + ' kWh'"
-                    description="Power Usage This Month" link="/energy-management/monthly">
+
+                <DashboardCard color="#42abb7" title="Power Usage This Month" :value="totalPowerUsageThisMonth"
+                    description="Power Usage This Month" link="/energy-management/historical-data">
                     <template #icon>
                         <i class="fas fa-calendar-alt"></i>
                     </template>
                 </DashboardCard>
-                <DashboardCard color="#00484a" title="Device Power Usage (Highest)" :value="highestPowerUsage"
+
+                <DashboardCard color="#00484a" title="Device Power Usage (Highest)" :value="highestDevicePowerUsage"
                     description="Highest Power Consumption">
                     <template #icon>
                         <i class="fas fa-plug"></i>
                     </template>
                 </DashboardCard>
+
+
 
 
                 <DashboardCard color="#245d75" title="Power Efficiency" value="Normal"
@@ -61,7 +65,7 @@
                     <div class="chart-wrapper">
                         <PowerHourlyChart :data="hourlyChartData" />
                     </div>
-                    <button class="add-button" @click="navigateToPage('/energy-management/hourly')">+</button>
+                    <button class="add-button" @click="navigateToPage('/energy-management/historical-data')">+</button>
                 </div>
             </div>
 
@@ -72,7 +76,7 @@
                     <div class="chart-wrapper">
                         <PowerDailyChart :data="dailyChartData" />
                     </div>
-                    <button class="add-button" @click="navigateToPage('/energy-management/daily')">+</button>
+                    <button class="add-button" @click="navigateToPage('/energy-management/historical-data')">+</button>
                 </div>
             </div>
         </div>
@@ -82,6 +86,7 @@
 
 <script>
 import * as XLSX from "xlsx";
+import axios from "axios";
 import DashboardCard from "@/components/DashboardCard.vue";
 import PowerHourlyChart from "../components/PowerHourlyChart.vue";
 import PowerDailyChart from "../components/PowerDailyChart.vue";
@@ -92,10 +97,64 @@ export default {
         PowerHourlyChart,
         PowerDailyChart,
     },
+    computed: {
+        powerUsageToday() {
+            if (!this.hourlyChartData || this.hourlyChartData.length === 0) {
+                return "0.00 kWh"; // Default value if no data
+            }
+
+            const totalToday = this.hourlyChartData.reduce((sum, entry) => sum + entry.value, 0);
+            return `${totalToday.toFixed(2)} kWh`; // Format to 2 decimal places
+        },
+        highestDevicePowerUsage() {
+            if (!this.differencesBySensor || Object.keys(this.differencesBySensor).length === 0) {
+                return "0.00 kWh"; // Default value if no data
+            }
+
+            let highestDevice = { sensor: "", value: 0 };
+
+            // Iterate through each sensor's differences to find the maximum
+            Object.entries(this.differencesBySensor).forEach(([sensor, differences]) => {
+                differences.forEach(({ value }) => {
+                    if (value > highestDevice.value) {
+                        highestDevice = { sensor, value };
+                    }
+                });
+            });
+
+            return `${highestDevice.value.toFixed(2)} kWh`;
+        },
+        totalPowerUsageThisMonth() {
+            if (!this.aggregatedData || Object.keys(this.aggregatedData).length === 0) {
+                return "0.00"; // Default value if no data
+            }
+
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+
+            let totalPower = 0;
+
+            // Sum up all values in aggregatedData for the current month, ignoring NaN
+            Object.entries(this.aggregatedData).forEach(([time, value]) => {
+                const entryDate = new Date(time);
+                if (
+                    entryDate.getMonth() === currentMonth &&
+                    entryDate.getFullYear() === currentYear &&
+                    !isNaN(value) // Ensure value is a valid number
+                ) {
+                    totalPower += value;
+                }
+            });
+
+            return `${totalPower.toFixed(2)} kWh`; // Format to 2 decimal places
+        },
+    },
     data() {
         return {
-            powerUsageToday: 0, // Initialize as a number
-            totalPowerUsageThisMonth: 0, // Initialize as a number
+            aggregatedData: {},
+            differencesBySensor: {}, // Initialize as an empty object
+            isDataLoaded: false, // Loading flag
             highestPowerUsage: "0 kWh", // Default as a string if it's a string
             totalGateways: 0,
             hourlyChartData: [], // Hourly chart data
@@ -111,120 +170,165 @@ export default {
     },
     methods: {
         fetchData() {
-            const filePath = "/assets/Simulated Data.xlsx";
+            this.processChartData();
+        },
+        processChartData() {
+            const meterSNs = ["24060410030004", "24061901790001", "24060410030003"];
+            const now = new Date();
+            const startTime = new Date(now);
+            startTime.setDate(now.getDate() - 1); // Start time: yesterday
+            startTime.setHours(23, 59, 59, 0); // Set start time to 17:00
+            const endTime = new Date(now);
+            endTime.setHours(17, 0, 0, 0); // Set end time to today 17:00
 
-            fetch(filePath)
+            axios
+                .get("http://157.230.240.216:5000/message_history")
                 .then((response) => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.arrayBuffer();
-                })
-                .then((arrayBuffer) => {
-                    const workbook = XLSX.read(arrayBuffer, { type: "array" });
-                    const sheet = workbook.Sheets["Compiled"];
-                    const sheetData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    const rawData = response.data.message_history;
+                    const aggregatedData = {};
 
-                    const headers = sheetData[0]; // Header row (timestamps for dates)
-                    const timeColumn = sheetData.slice(1); // Data rows (time + values)
+                    // Filter data by meterSNs
+                    const filteredData = rawData.filter((entry) => meterSNs.includes(entry.meterSN));
 
-                    const now = new Date(); // Current date and time
-                    const startMonthDate = new Date(now.getFullYear(), now.getMonth(), 10, 0, 0, 0); // 10th of the month
-                    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0); // Today 00:00:00
+                    const differencesBySensor = {};
 
-                    let powerUsageBeforeToday = 0;
-                    let powerUsageToday = 0;
-                    let highestPowerUsage = { value: 0, date: "", time: "" }; // For the 3rd card
+                    // Calculate differences by sensor
+                    meterSNs.forEach((meterSN) => {
+                        const sensorData = filteredData
+                            .filter((entry) => entry.meterSN === meterSN)
+                            .sort((a, b) => new Date(b.datatime) - new Date(a.datatime)) // Sort from latest to earliest
+                            .map((entry) => {
+                                const time = new Date(
+                                    `${entry.datatime.slice(0, 4)}-${entry.datatime.slice(4, 6)}-${entry.datatime.slice(6, 8)}T${entry.datatime.slice(8, 10)}:${entry.datatime.slice(10, 12)}`
+                                );
 
-                    // Loop through each row of the Excel data
-                    timeColumn.forEach((row) => {
-                        let timestamp = row[0]; // First column contains timestamps
-                        let rowTime;
+                                // Align time for consistent grouping
+                                const alignedTime = `${time.getFullYear()}-${(time.getMonth() + 1)
+                                    .toString()
+                                    .padStart(2, "0")}-${time
+                                        .getDate()
+                                        .toString()
+                                        .padStart(2, "0")} ${time
+                                            .getHours()
+                                            .toString()
+                                            .padStart(2, "0")}:00`;
+                                return { ...entry, alignedTime };
+                            });
 
-                        // Handle timestamp as Excel date-time format or string
-                        if (typeof timestamp === "number") {
-                            // Convert Excel date-time number to JavaScript Date object
-                            const parsedDate = XLSX.SSF.parse_date_code(timestamp);
-                            rowTime = new Date(
-                                todayStart.getFullYear(),
-                                todayStart.getMonth(),
-                                todayStart.getDate(),
-                                parsedDate.H,
-                                parsedDate.M,
-                                parsedDate.S
-                            );
-                        } else if (typeof timestamp === "string") {
-                            // Convert string time (e.g., "12:05:00 am") to JavaScript Date object
-                            const [hours, minutes, period] = timestamp
-                                .replace(/:\d{2}\s(am|pm)$/i, "")
-                                .split(/[: ]/);
-                            const hours24 =
-                                period.toLowerCase() === "pm" && parseInt(hours) !== 12
-                                    ? parseInt(hours) + 12
-                                    : period.toLowerCase() === "am" && parseInt(hours) === 12
-                                        ? 0
-                                        : parseInt(hours);
-                            rowTime = new Date(todayStart);
-                            rowTime.setHours(hours24, parseInt(minutes), 0, 0);
-                        } else {
-                            console.error(`Invalid timestamp format: ${timestamp}`);
-                            return;
-                        }
-
-                        // Process columns (dates from headers)
-                        headers.slice(1).forEach((header, index) => {
-                            let date;
-                            if (typeof header === "number") {
-                                const parsedDate = XLSX.SSF.parse_date_code(header);
-                                date = new Date(parsedDate.y, parsedDate.m - 1, parsedDate.d);
-                            } else {
-                                date = new Date(header);
+                        differencesBySensor[meterSN] = sensorData.map((entry, index) => {
+                            if (index === sensorData.length - 1) {
+                                // Compare the last data point with the previous one
+                                const previous = sensorData[index - 1];
+                                if (previous) {
+                                    const difference = previous.EPI - entry.EPI;
+                                    return { time: entry.alignedTime, value: Math.abs(difference) };
+                                }
+                                return { time: entry.alignedTime, value: 0 };
                             }
+                            // Compare current entry with the next one
+                            const next = sensorData[index + 1];
+                            const difference = entry.EPI - next.EPI;
 
-                            const value = parseFloat(row[index + 1] || 0); // Current value
-
-                            // Combine date and row time
-                            const fullTimestamp = new Date(date);
-                            fullTimestamp.setHours(rowTime.getHours());
-                            fullTimestamp.setMinutes(rowTime.getMinutes());
-                            fullTimestamp.setSeconds(0);
-
-                            // First Calculation: Add data from 10 November to 18 November (inclusive)
-                            if (fullTimestamp >= startMonthDate && fullTimestamp < todayStart) {
-                                powerUsageBeforeToday += value;
+                            // Filter out differences beyond the threshold (-50 to 50)
+                            if (difference >= -50 && difference <= 50) {
+                                return { time: entry.alignedTime, value: Math.abs(difference) };
                             }
-
-                            // Second Calculation: Add data for today up to the current time
-                            if (fullTimestamp >= todayStart && fullTimestamp <= now) {
-                                powerUsageToday += value;
-                            }
-
-                            // Track the highest power usage
-                            if (value > highestPowerUsage.value) {
-                                highestPowerUsage = {
-                                    value,
-                                    date: fullTimestamp.toISOString().slice(0, 10),
-                                    time: fullTimestamp.toTimeString().slice(0, 5),
-                                };
-                            }
+                            return { time: entry.alignedTime, value: 0 };
                         });
                     });
 
-                    // Total power usage for this month
-                    const totalPowerUsageThisMonth = powerUsageBeforeToday + powerUsageToday;
+                    this.differencesBySensor = differencesBySensor; // Store differencesBySensor in data
+                    console.log("Differences by Sensor:", differencesBySensor);
 
-                    // Update the card values
-                    this.powerUsageToday = parseFloat(powerUsageToday.toFixed(2));
-                    this.totalPowerUsageThisMonth = parseFloat(totalPowerUsageThisMonth.toFixed(2));
-                    this.highestPowerUsage = `${highestPowerUsage.value.toFixed(2)} kWh`;
+                    // Aggregate data
+                    Object.keys(differencesBySensor).forEach((sensor) => {
+                        differencesBySensor[sensor].forEach((entry) => {
+                            const key = entry.time;
+                            if (!aggregatedData[key]) {
+                                aggregatedData[key] = 0;
+                            }
+                            aggregatedData[key] += entry.value;
+                        });
+                    });
 
-                    console.log("Power Usage Before Today (10 Nov to 18 Nov):", powerUsageBeforeToday);
-                    console.log("Power Usage Today (Up to Now):", powerUsageToday);
-                    console.log("Total Power Usage This Month:", this.totalPowerUsageThisMonth);
-                    console.log("Highest Power Usage:", this.highestPowerUsage);
+                    this.aggregatedData = aggregatedData; // Store the aggregated data
+                    console.log("Aggregated Data:", aggregatedData);
+
+                    // Process hourly data for the last 24 hours (from yesterday 17:00 to today 17:00)
+                    const hourlyData = Array(24).fill(0);
+                    const hourlyLabels = [];
+                    const currentTime = new Date(startTime);
+
+                    for (let i = 0; i < 24; i++) {
+                        const hourKey = `${currentTime.getFullYear()}-${(currentTime.getMonth() + 1)
+                            .toString()
+                            .padStart(2, "0")}-${currentTime
+                                .getDate()
+                                .toString()
+                                .padStart(2, "0")} ${currentTime
+                                    .getHours()
+                                    .toString()
+                                    .padStart(2, "0")}:00`;
+
+                        hourlyLabels.push(`${String(currentTime.getHours()).padStart(2, "0")}:00`);
+                        if (aggregatedData[hourKey]) {
+                            hourlyData[i] = aggregatedData[hourKey];
+                        }
+                        currentTime.setHours(currentTime.getHours() + 1);
+                    }
+
+                    this.hourlyChartData = hourlyLabels.map((label, index) => ({
+                        label,
+                        value: parseFloat(hourlyData[index].toFixed(2)),
+                    }));
+                    console.log("Hourly Chart Data:", this.hourlyChartData);
+
+                    // Generate daily data for the last 7 days
+                    const dailyData = {};
+                    Object.keys(aggregatedData).forEach((key) => {
+                        const time = new Date(key);
+                        const dailyKey = `${time.getFullYear()}-${(time.getMonth() + 1)
+                            .toString()
+                            .padStart(2, "0")}-${time
+                                .getDate()
+                                .toString()
+                                .padStart(2, "0")}`;
+                        if (!dailyData[dailyKey]) {
+                            dailyData[dailyKey] = 0;
+                        }
+                        dailyData[dailyKey] += aggregatedData[key];
+                    });
+
+                    const dailyLabels = [];
+                    const dailyChartData = [];
+                    Object.keys(dailyData).sort((a, b) => new Date(a) - new Date(b)).forEach((key) => {
+                        dailyLabels.push(key);
+                        const value = parseFloat(dailyData[key].toFixed(2));
+                        if (!isNaN(value)) { // Ignore NaN values
+                            dailyChartData.push(value);
+                        }
+                    });
+
+                    console.log("Daily Chart Data:", dailyChartData);
+
+                    // Store daily chart data for rendering
+                    this.dailyChartData = dailyLabels.map((label, index) => {
+                        // Add one day to the label to adjust the date correctly
+                        const correctedDate = new Date(label);
+                        correctedDate.setDate(correctedDate.getDate() + 1); // Add one day
+
+                        // Format the corrected date back to YYYY-MM-DD
+                        const correctedLabel = correctedDate.toISOString().slice(0, 10);
+
+                        return {
+                            label: correctedLabel,
+                            value: dailyChartData[index],
+                        };
+                    }).filter(data => !isNaN(data.value)); // Ensure no NaN values in final data
+
                 })
                 .catch((error) => {
-                    console.error("Error reading Excel file:", error);
+                    console.error("Error fetching data from API:", error);
                 });
         },
         navigateToPage(path) {
@@ -380,7 +484,7 @@ export default {
                     this.dailyChartData = last7Days.reverse().map((date) => ({
                         label: date,
                         value: parseFloat((dailyData[date] || 0).toFixed(2)), // Use aggregated value or 0 for missing dates
-                    }));
+                    })).filter(entry => !isNaN(entry.value)); // Remove entries where value is NaN
 
                     // Debugging output
                     console.log("Hourly Chart Data:", this.hourlyChartData);
@@ -393,9 +497,9 @@ export default {
 
     },
     mounted() {
+        this.processChartData(); // Fetch and process the data when the component mounts
         // Fetch data immediately
         this.fetchData();
-        this.fetchChartData();
         // Set an interval to fetch data every 5 minutes
         this.intervalId = setInterval(() => {
             this.fetchData();

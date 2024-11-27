@@ -37,23 +37,8 @@
                                 </router-link>
                             </li>
                             <li>
-                                <router-link to="/energy-management/5-minutes" class="menu-link">
-                                    5 Minutes Chart
-                                </router-link>
-                            </li>
-                            <li>
-                                <router-link to="/energy-management/hourly" class="menu-link">
-                                    Hourly Chart
-                                </router-link>
-                            </li>
-                            <li>
-                                <router-link to="/energy-management/daily" class="menu-link">
-                                    Daily Chart
-                                </router-link>
-                            </li>
-                            <li>
-                                <router-link to="/energy-management/monthly" class="menu-link">
-                                    Monthly Chart
+                                <router-link to="/energy-management/historical-data" class="menu-link">
+                                    Charts
                                 </router-link>
                             </li>
                             <li>
@@ -61,15 +46,112 @@
                                     Device Floorplan
                                 </router-link>
                             </li>
+                            <li>
+                                <router-link to="/energy-management/data-logs" class="menu-link">
+                                    Data Logs
+                                </router-link>
+                            </li>               
                         </ul>
                     </li>
-
-                    <!-- Automation Management -->
-                    <li class="menu-item">
-                        <router-link to="/automation-management" class="menu-link">
-                            <i class="fas fa-cog"></i>
+                </ul>
+                <ul class="menu">
+                    <!-- Energy Management Dropdown -->
+                    <li class="menu-item dropdown">
+                        <div class="menu-link" @click="toggleDropdown('waterManagement')">
+                            <i class="fas fa-tint"></i> <!-- Water droplet icon -->
+                            <span v-if="!collapsed">Water Management</span>
+                            <i class="fas fa-chevron-down dropdown-icon" :class="{ rotated: dropdowns.waterManagement }"
+                                v-if="!collapsed"></i>
+                        </div>
+                        <ul v-if="dropdowns.waterManagement && !collapsed" class="submenu">
+                            <li>
+                                <router-link to="/water-management" class="menu-link">
+                                    Overview
+                                </router-link>
+                            </li>
+                            <li>
+                                <router-link to="/water-management/historical-data" class="menu-link">
+                                    Charts
+                                </router-link>
+                            </li>
+                            <li>
+                                <router-link to="/water-management/deviceFloorplan" class="menu-link">
+                                    Device Floor Plan
+                                </router-link>
+                            </li>                            
+                            <li>
+                                <router-link to="/water-management/data-logs" class="menu-link">
+                                    Data Logs
+                                </router-link>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+            <div class="menu-section">
+                <span class="menu-title" v-if="!collapsed">Automation</span>
+                <ul class="menu">
+                    <!-- Energy Management Dropdown -->
+                    <li class="menu-item dropdown">
+                        <div class="menu-link" @click="toggleDropdown('automationManagement')">
+                            <i class="fas fa-cog"></i> <!-- Water droplet icon -->
                             <span v-if="!collapsed">Automation Management</span>
-                        </router-link>
+                            <i class="fas fa-chevron-down dropdown-icon" :class="{ rotated: dropdowns.automationManagement }"
+                                v-if="!collapsed"></i>
+                        </div>
+                        <ul v-if="dropdowns.automationManagement && !collapsed" class="submenu">
+                            <li>
+                                <router-link to="/automation-management" class="menu-link">
+                                    Overview
+                                </router-link>
+                            </li>
+                            <li>
+                                <router-link to="/automation-management/air-con" class="menu-link">
+                                    Air-Con
+                                </router-link>
+                            </li>
+                            <li>
+                                <router-link to="/automation-management/lighting" class="menu-link">
+                                    Lighting
+                                </router-link>
+                            </li>
+                            <li>
+                                <router-link to="/automation-management/fault-calling" class="menu-link">
+                                    Fault Calling
+                                </router-link>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+            <div class="menu-section">
+                <span class="menu-title" v-if="!collapsed">Others</span>
+                <ul class="menu">
+                    <!-- Energy Management Dropdown -->
+                    <li class="menu-item dropdown">
+                        <div class="menu-link" @click="toggleDropdown('others')">
+                            <i class="fas fa-ellipsis-h"></i>
+                            <span v-if="!collapsed">Others</span>
+                            <i class="fas fa-chevron-down dropdown-icon" :class="{ rotated: dropdowns.others }"
+                                v-if="!collapsed"></i>
+                        </div>
+                        <ul v-if="dropdowns.others && !collapsed" class="submenu">
+                            <li>
+                                <router-link to="/others/simulation" class="menu-link">
+                                    Simulation/Cost Estimator
+                                </router-link>
+                            </li>
+                            <li>
+                                <router-link to="/others/efficiency-settings" class="menu-link">
+                                    Efficiency Settings
+                                </router-link>
+                            </li>
+                            <li>
+                                <router-link to="/others/esg" class="menu-link">
+                                    ESG
+                                </router-link>
+                            </li>
+                        </ul>
                     </li>
                 </ul>
             </div>
@@ -88,6 +170,9 @@ export default {
         return {
             dropdowns: {
                 energyManagement: false, // State for Energy Management dropdown
+                waterManagement: false, // State for Water Management dropdown
+                automationManagement: false, // State for Automation Management dropdown
+                others: false // State for others dropdown
             },
         };
     },

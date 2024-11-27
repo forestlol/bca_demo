@@ -4,7 +4,7 @@ import EnergyManagementView from "../views/EnergyManagementView.vue";
 import MonthlyChart from "@/components/EnergyManagement/MonthlyChart.vue";
 import DailyChart from "@/components/EnergyManagement/DailyChart.vue";
 import HourlyChart from "@/components/EnergyManagement/HourlyChart.vue";
-import FiveMinutesChart from "@/components/EnergyManagement/FiveMinutesChart.vue";
+import HistoricalData from "@/components/EnergyManagement/HistoricalData.vue";
 // import AutomationManagementView from "../views/AutomationManagementView.vue";
 
 const routes = [
@@ -34,9 +34,9 @@ const routes = [
     component: HourlyChart, // Energy Management with dynamic chart selection
   },
   {
-    path: "/energy-management/5-minutes",
-    name: "FiveMinutesChart",
-    component: FiveMinutesChart, // Energy Management with dynamic chart selection
+    path: "/energy-management/historical-data",
+    name: "HistoricalData",
+    component: HistoricalData, // Energy Management with dynamic chart selection
   },
 ];
 
