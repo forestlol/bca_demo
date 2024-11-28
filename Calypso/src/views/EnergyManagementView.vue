@@ -182,7 +182,7 @@ export default {
             endTime.setHours(17, 0, 0, 0); // Set end time to today 17:00
 
             axios
-                .get("http://157.230.240.216:5000/message_history")
+                .get("https://geibms.com/message_history")
                 .then((response) => {
                     const rawData = response.data.message_history;
                     const aggregatedData = {};
