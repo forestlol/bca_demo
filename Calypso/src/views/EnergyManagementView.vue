@@ -173,7 +173,8 @@ export default {
             this.processChartData();
         },
         processChartData() {
-            const meterSNs = ["24060410030004", "24061901790001", "24060410030003"];
+            const meterSNs = ["24060404690001", "24060410030004", "24061901790001", "24060410030003", "24060410030002", "24060404690002", "24112209220002", "24112209220003", "24112209220006", "24112209220005"];
+            // excluded 24112209220004, to be added again
             const now = new Date();
             const startTime = new Date(now);
             startTime.setDate(now.getDate() - 1); // Start time: yesterday
@@ -283,7 +284,7 @@ export default {
                     }));
                     console.log("Hourly Chart Data:", this.hourlyChartData);
 
-                    // Generate daily data for the last 7 days
+                    // Generate daily data for the last 7 days excluding today
                     const dailyData = {};
                     Object.keys(aggregatedData).forEach((key) => {
                         const time = new Date(key);
@@ -301,31 +302,43 @@ export default {
 
                     const dailyLabels = [];
                     const dailyChartData = [];
-                    Object.keys(dailyData).sort((a, b) => new Date(a) - new Date(b)).forEach((key) => {
-                        dailyLabels.push(key);
-                        const value = parseFloat(dailyData[key].toFixed(2));
-                        if (!isNaN(value)) { // Ignore NaN values
-                            dailyChartData.push(value);
+                    const today = new Date();
+                    const last7Days = [];
+
+                    // Compute the last 7 days excluding today
+                    for (let i = 1; i <= 7; i++) {
+                        const date = new Date(today);
+                        date.setDate(today.getDate() - i); // Subtract i days
+                        const formattedDate = `${date.getFullYear()}-${(date.getMonth() + 1)
+                            .toString()
+                            .padStart(2, "0")}-${date
+                                .getDate()
+                                .toString()
+                                .padStart(2, "0")}`;
+                        last7Days.push(formattedDate);
+                    }
+
+                    // Filter data for the last 7 days
+                    last7Days.reverse(); // Ensure the order is from oldest to most recent
+                    last7Days.forEach((date) => {
+                        if (dailyData[date] !== undefined) {
+                            dailyLabels.push(date);
+                            const value = parseFloat(dailyData[date].toFixed(2));
+                            if (!isNaN(value)) { // Ignore NaN values
+                                dailyChartData.push(value);
+                            }
                         }
                     });
 
                     console.log("Daily Chart Data:", dailyChartData);
 
                     // Store daily chart data for rendering
-                    this.dailyChartData = dailyLabels.map((label, index) => {
-                        // Add one day to the label to adjust the date correctly
-                        const correctedDate = new Date(label);
-                        correctedDate.setDate(correctedDate.getDate() + 1); // Add one day
+                    this.dailyChartData = dailyLabels.map((label, index) => ({
+                        label,
+                        value: dailyChartData[index],
+                    })).filter(data => !isNaN(data.value)); // Ensure no NaN values in final data
 
-                        // Format the corrected date back to YYYY-MM-DD
-                        const correctedLabel = correctedDate.toISOString().slice(0, 10);
-
-                        return {
-                            label: correctedLabel,
-                            value: dailyChartData[index],
-                        };
-                    }).filter(data => !isNaN(data.value)); // Ensure no NaN values in final data
-
+                    console.log("Filtered Last 7 Days Chart Data (Excluding Today):", this.dailyChartData);
                 })
                 .catch((error) => {
                     console.error("Error fetching data from API:", error);
