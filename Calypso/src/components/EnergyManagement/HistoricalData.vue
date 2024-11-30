@@ -19,13 +19,20 @@
                     </option>
                 </select>
 
-                <select v-model="selectedDevice" @change="fetchData">
-                    <option value="all">All Devices</option>
-                    <option v-for="device in devices" :key="device" :value="device">
-                        {{ device }}
-                    </option>
+                <select v-model="selectedMeterSN" @change="fetchData">
+                    <option value="all">All Meters</option>
+                    <option value="24061901790001">FCU 4</option>
+                    <option value="24060404690001">FCU 5</option>
+                    <option value="24112209220002">FCU 6</option>
+                    <option value="24060410030002">FCU 7</option>
+                    <option value="24112209220006">FCU 8</option>
+                    <option value="24060404690002">FCU 9</option>
+                    <option value="24060410030003">FCU 10</option>
+                    <option value="24060410030004">FCU 11</option>
+                    <!-- <option value="24112209220004">24112209220004 - Meter 7 - *LIGHTING</option> -->
+                    <option value="24112209220003">FCU 12</option>
+                    <option value="24112209220005">FCU 13</option>
                 </select>
-
 
                 <input type="date" v-model="startDate" @change="onDateChange" placeholder="Choose Date" />
                 <input type="date" v-model="endDate" @change="onDateChange" placeholder="Choose Date" />
@@ -46,11 +53,20 @@
             </div>
         </div>
 
-        <!-- Chart Section -->
-        <div class="chart-section">
-            <PowerLineChart ref="chartComponent" :data="chartData" :labels="chartLabels" :baselineData="baselineData" />
 
+        <div class="chart-section">
+            <div class="chart-container">
+                <PowerLineChart ref="chartComponent" :data="chartData" :labels="chartLabels"
+                    :baselineData="baselineData" :type="chartType" />
+                <!-- Toggle Buttons in the Top-Right Corner of the Chart -->
+                <div class="chart-toggle">
+                    <button :class="{ active: chartType === 'line' }" @click="chartType = 'line'">Line</button>
+                    <button :class="{ active: chartType === 'bar' }" @click="chartType = 'bar'">Bar</button>
+                </div>
+            </div>
         </div>
+
+
     </div>
 
     <!-- Modal -->
@@ -102,6 +118,8 @@ export default {
         yesterday.setDate(today.getDate() - 1);
 
         return {
+            selectedMeterSN: "all", // Default to "all" meters
+            chartType: "line", // Default to line chart
             showSettingsModal: false,
             gateways: [],
             types: [],
@@ -183,69 +201,6 @@ export default {
                 this.types.push("VRF AIRCON");
             }
         },
-
-        // processChartData(data) {
-        //     const is5Min = this.selectedTimeRange === "5-min";
-        //     const isHourly = this.selectedTimeRange === "Hourly";
-        //     const isDaily = this.selectedTimeRange === "Daily";
-        //     const isMonthly = this.selectedTimeRange === "Monthly";
-
-        //     // Filter data based on the selected date range
-        //     const filteredData = data.filter((entry) => {
-        //         const entryDate = new Date(
-        //             `${entry.datatime.slice(0, 4)}-${entry.datatime.slice(4, 6)}-${entry.datatime.slice(6, 8)} ${entry.datatime.slice(8, 10)}:${entry.datatime.slice(10, 12)}`
-        //         );
-        //         const startDateObj = new Date(this.startDate);
-        //         const endDateObj = new Date(this.endDate);
-
-        //         return entryDate >= startDateObj && entryDate <= endDateObj;
-        //     });
-
-        //     const aggregatedData = filteredData.reduce((acc, entry) => {
-        //         const dateTimeStr = entry.datatime;
-
-        //         // Extract components from the custom `datatime` format
-        //         const year = dateTimeStr.slice(0, 4);
-        //         const month = dateTimeStr.slice(4, 6);
-        //         const day = dateTimeStr.slice(6, 8);
-        //         const hour = dateTimeStr.slice(8, 10);
-        //         const minute = dateTimeStr.slice(10, 12);
-
-        //         // Format the key based on the selected time range
-        //         const key = is5Min
-        //             ? `${year}-${month}-${day} ${hour}:${Math.floor(minute / 5) * 5}` // 5-minute interval format
-        //             : isHourly
-        //                 ? `${year}-${month}-${day} ${hour}:00` // Hourly format
-        //                 : isDaily
-        //                     ? `${year}-${month}-${day}` // Daily format
-        //                     : isMonthly
-        //                         ? `${year}-${month}` // Monthly format
-        //                         : `${year}-${month}-${day}`; // Default to daily
-
-        //         if (!acc[key]) {
-        //             acc[key] = { key, totalPower: 0 };
-        //         }
-
-        //         // Sum up the power values
-        //         acc[key].totalPower += entry.EPE || 0;
-        //         return acc;
-        //     }, {});
-
-        //     // Calculate differences
-        //     const sortedKeys = Object.keys(aggregatedData).sort((a, b) => new Date(a) - new Date(b));
-        //     const differences = sortedKeys.map((key, index) => {
-        //         if (index === 0) return { key, powerChange: 0 }; // No previous value for the first interval
-        //         const currentPower = aggregatedData[key].totalPower;
-        //         const previousPower = aggregatedData[sortedKeys[index - 1]].totalPower;
-        //         return { key, powerChange: currentPower - previousPower };
-        //     });
-
-        //     // Populate chart labels and data
-        //     this.chartLabels = differences.map((entry) => entry.key);
-        //     this.chartData = differences.map((entry) => entry.powerChange);
-
-        //     console.log(`${this.selectedTimeRange} Differences:`, differences);
-        // },
         onDateChange() {
             // Call processChartData when the date range changes
             this.processChartData(this.startDate, this.endDate);
@@ -282,7 +237,8 @@ export default {
             const labels = [];
             const data = [];
             // const meterSNs = ["24060410030004", "24061901790001", "24060410030003", "24060404690001", "24060410030002", "24060404690002"];
-            const meterSNs = ["24060410030004", "24061901790001", "24060410030003"];
+            const meterSNs = ["24060404690001", "24060410030004", "24061901790001", "24060410030003", "24060410030002", "24060404690002", "24112209220002", "24112209220003", "24112209220006", "24112209220005"];
+            // excluded 24112209220004, to be added again
             // Set default start and end dates if not provided
             const now = new Date();
             const yesterday = new Date(now);
@@ -318,13 +274,26 @@ export default {
                 .then((response) => {
                     const rawData = response.data.message_history;
 
-                    // Filter data for the selected date range
-                    const filteredData = rawData.filter((entry) => {
+                    // Filter data for the selected meterSN
+                    let filteredData = rawData.filter((entry) => {
                         const entryDate = new Date(
                             `${entry.datatime.slice(0, 4)}-${entry.datatime.slice(4, 6)}-${entry.datatime.slice(6, 8)}T${entry.datatime.slice(8, 10)}:${entry.datatime.slice(10, 12)}`
                         );
-                        return entryDate >= startDateObj && entryDate <= endDateObj;
+
+                        return (
+                            entryDate >= startDateObj &&
+                            entryDate <= endDateObj &&
+                            (this.selectedMeterSN === "all" || entry.meterSN === this.selectedMeterSN)
+                        );
                     });
+
+                    if (filteredData.length === 0) {
+                        console.warn("No data available for the selected meterSN or date range.");
+                        this.chartLabels = [];
+                        this.chartData = [];
+                        this.updateChart();
+                        return;
+                    }
 
                     const differencesBySensor = {};
                     const aggregatedData = {};
@@ -351,7 +320,11 @@ export default {
                                             .padStart(2, "0")}:${Math.floor(time.getMinutes() / 5) * 5
                                                 .toString()
                                                 .padStart(2, "0")}`;
-                                return { ...entry, alignedTime };
+
+                                // Add transformation for meter 24112209220004
+                                const value = meterSN === "24112209220004" ? (entry.EPI % 10) * 48 : entry.EPI;
+
+                                return { ...entry, alignedTime, value };
                             });
 
                         differencesBySensor[meterSN] = sensorData.map((entry, index) => {
@@ -359,14 +332,14 @@ export default {
                                 // Compare the last data point with the previous one
                                 const previous = sensorData[index - 1];
                                 if (previous) {
-                                    const difference = previous.EPI - entry.EPI;
+                                    const difference = previous.value - entry.value;
                                     return { time: entry.alignedTime, value: Math.abs(difference) };
                                 }
                                 return { time: entry.alignedTime, value: 0 };
                             }
                             // Compare current entry with the next one
                             const next = sensorData[index + 1];
-                            const difference = entry.EPI - next.EPI;
+                            const difference = entry.value - next.value;
 
                             // Filter out differences beyond the threshold (-50 to 50)
                             if (difference >= -50 && difference <= 50) {
@@ -660,5 +633,47 @@ export default {
 
 .modal input[type="checkbox"] {
     margin-right: 10px;
+}
+
+.chart-container {
+    position: relative;
+    /* Ensures the toggle buttons are positioned relative to the chart */
+    width: 100%;
+    height: 400px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.chart-toggle {
+    position: absolute;
+    top: 0px;
+    right: 10px;
+    display: flex;
+    gap: 5px;
+    z-index: 10;
+    /* Ensure the toggle buttons appear above the chart */
+}
+
+.chart-toggle button {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    background-color: #f0f0f0;
+    font-size: 12px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s ease;
+}
+
+.chart-toggle button.active {
+    background-color: #007bff;
+    color: white;
+}
+
+.chart-toggle button:hover {
+    background-color: #0056b3;
+    color: white;
 }
 </style>

@@ -75,7 +75,7 @@ export default {
     methods: {
         fetchDropdownData() {
             axios
-                .get("http://157.230.240.216:5000/message_history")
+                .get("https://geibms.com/message_history")
                 .then((response) => {
                     const data = response.data.message_history;
                     this.populateDropdowns(data);
