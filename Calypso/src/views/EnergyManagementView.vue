@@ -112,14 +112,23 @@ export default {
             }
 
             let highestDevice = { sensor: "", value: 0 };
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0); // Midnight of today
 
-            // Iterate through each sensor's differences to find the maximum
+            // Iterate through each sensor's differences
             Object.entries(this.differencesBySensor).forEach(([sensor, differences]) => {
-                differences.forEach(({ value }) => {
-                    if (value > highestDevice.value) {
-                        highestDevice = { sensor, value };
+                const totalValueForToday = differences.reduce((total, { time, value }) => {
+                    const entryTime = new Date(time);
+                    if (entryTime >= todayStart) {
+                        return total + value; // Add up values for today only
                     }
-                });
+                    return total;
+                }, 0);
+
+                // Update the highest device if the current sensor's total is greater
+                if (totalValueForToday > highestDevice.value) {
+                    highestDevice = { sensor, value: totalValueForToday };
+                }
             });
 
             return `${highestDevice.value.toFixed(2)} kWh`;
@@ -255,34 +264,35 @@ export default {
                     this.aggregatedData = aggregatedData; // Store the aggregated data
                     console.log("Aggregated Data:", aggregatedData);
 
-                    // Process hourly data for the last 24 hours (from yesterday 17:00 to today 17:00)
-                    const hourlyData = Array(24).fill(0);
+                    // Process hourly data for today (from 00:00 to 23:00)
+                    const hourlyData = Array(24).fill(0); // 24-hour data
                     const hourlyLabels = [];
-                    const currentTime = new Date(startTime);
+                    const todayStart = new Date();
+                    todayStart.setHours(0, 0, 0, 0); // Start of today (00:00)
+                    const todayEnd = new Date();
+                    todayEnd.setHours(23, 59, 59, 999); // End of today (23:59:59)
 
-                    for (let i = 0; i < 24; i++) {
-                        const hourKey = `${currentTime.getFullYear()}-${(currentTime.getMonth() + 1)
-                            .toString()
-                            .padStart(2, "0")}-${currentTime
-                                .getDate()
-                                .toString()
-                                .padStart(2, "0")} ${currentTime
-                                    .getHours()
-                                    .toString()
-                                    .padStart(2, "0")}:00`;
-
-                        hourlyLabels.push(`${String(currentTime.getHours()).padStart(2, "0")}:00`);
-                        if (aggregatedData[hourKey]) {
-                            hourlyData[i] = aggregatedData[hourKey];
+                    Object.keys(aggregatedData).forEach((key) => {
+                        const time = new Date(key);
+                        if (time >= todayStart && time <= todayEnd) {
+                            const hourIndex = time.getHours(); // Extract the hour as an index
+                            hourlyData[hourIndex] += aggregatedData[key];
                         }
-                        currentTime.setHours(currentTime.getHours() + 1);
+                    });
+
+                    // Generate labels and format the hourly chart data
+                    for (let i = 0; i < 24; i++) {
+                        const label = `${String(i).padStart(2, "0")}:00`; // Format as "HH:00"
+                        hourlyLabels.push(label);
                     }
 
                     this.hourlyChartData = hourlyLabels.map((label, index) => ({
                         label,
                         value: parseFloat(hourlyData[index].toFixed(2)),
                     }));
-                    console.log("Hourly Chart Data:", this.hourlyChartData);
+
+                    console.log("Filtered Hourly Chart Data (Today 00:00 to 23:00):", this.hourlyChartData);
+
 
                     // Generate daily data for the last 7 days excluding today
                     const dailyData = {};
