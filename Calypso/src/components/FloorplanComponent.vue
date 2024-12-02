@@ -11,9 +11,9 @@
         <div class="toolbar-item">
           <label for="floor-selection">Choose Floor:</label>
           <select id="floor-selection" v-model="selectedFloor">
-            <option>Keppel Bay Tower L18</option>
-            <option>Keppel Bay Tower L19</option>
-            <option>Keppel Bay Tower L20</option>
+            <option>Floor 1</option>
+            <option>Floor 2</option>
+            <option>Floor 3</option>
           </select>
         </div>
         <div class="toolbar-item">
@@ -29,7 +29,7 @@
   
       <!-- Title Bar -->
       <div class="heatmap-title-bar">
-        Heatmap Distribution Chart <span class="subtitle">(Keppel Bay Tower L18)</span>
+        Heatmap Distribution Chart <span class="subtitle">Floor 1</span>
       </div>
   
       <!-- Floorplan Section -->
@@ -44,9 +44,9 @@
     data() {
       return {
         autoRefresh: false,
-        selectedFloor: "Keppel Bay Tower L18",
-        startDateTime: "2024-11-26T00:00",
-        endDateTime: "2024-11-26T00:15",
+        selectedFloor: "Floor 1",
+        startDateTime: "-",
+        endDateTime: "-",
       };
     },
     methods: {
