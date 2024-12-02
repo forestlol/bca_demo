@@ -46,6 +46,11 @@
                 </div>
             </div>
             <div class="filters-right">
+                <!-- Add Comparison Chart Button -->
+                <button class="comparison-button" @click="toggleComparisonMode">
+                    {{ isComparisonMode ? "Switch to Normal Chart" : "Switch to Comparison Chart" }}
+                </button>
+
                 <button class="settings-button" @click="toggleModal">
                     Settings <span class="settings-icon">&#9881;</span>
                 </button>
@@ -55,10 +60,19 @@
 
 
         <div class="chart-section">
-            <div class="chart-container">
+            <div v-if="!isComparisonMode" class="chart-container">
                 <PowerLineChart ref="chartComponent" :data="chartData" :labels="chartLabels"
                     :baselineData="baselineData" :type="chartType" />
                 <!-- Toggle Buttons in the Top-Right Corner of the Chart -->
+                <div class="chart-toggle">
+                    <button :class="{ active: chartType === 'line' }" @click="chartType = 'line'">Line</button>
+                    <button :class="{ active: chartType === 'bar' }" @click="chartType = 'bar'">Bar</button>
+                </div>
+            </div>
+            <div v-if="isComparisonMode" class="chart-container">
+                <h3>Comparison Chart</h3>
+                <PowerLineChart2 ref="comparisonChart" :data="comparisonChartData" :labels="comparisonChartLabels"
+                    :type="'line'" />
                 <div class="chart-toggle">
                     <button :class="{ active: chartType === 'line' }" @click="chartType = 'line'">Line</button>
                     <button :class="{ active: chartType === 'bar' }" @click="chartType = 'bar'">Bar</button>
@@ -109,15 +123,18 @@
 <script>
 import axios from "axios";
 import PowerLineChart from "@/components/charts/PowerLineChart.vue";
+import PowerLineChart2 from "@/components/charts/PowerLineChart2.vue";
 
 export default {
-    components: { PowerLineChart },
+    components: { PowerLineChart, PowerLineChart2 },
     data() {
         const today = new Date();
         const yesterday = new Date(today);
         yesterday.setDate(today.getDate() - 1);
 
         return {
+            isComparisonMode: false, // Track if comparison mode is active
+            comparisonChartData: [], // Store data for comparison chart
             selectedMeterSN: "all", // Default to "all" meters
             chartType: "line", // Default to line chart
             showSettingsModal: false,
@@ -149,10 +166,179 @@ export default {
     },
     watch: {
         selectedTimeRange() {
-            this.computeBaselineData(); // Recompute the baseline for the new time range
+            if (this.isComparisonMode) {
+                // If comparison mode is on, fetch comparison data
+                this.fetchComparisonData();
+                this.computeBaselineData(); // Recompute the baseline for the new time range
+            } else {
+                // Otherwise, process normal chart data
+                this.processChartData(this.startDate, this.endDate);
+                this.computeBaselineData(); // Recompute the baseline for the new time range
+            }
         },
     },
     methods: {
+        parseCustomDatetime(datetime) {
+            const year = parseInt(datetime.slice(0, 4), 10);
+            const month = parseInt(datetime.slice(4, 6), 10) - 1; // Months are 0-indexed
+            const day = parseInt(datetime.slice(6, 8), 10);
+            const hours = parseInt(datetime.slice(8, 10), 10);
+            const minutes = parseInt(datetime.slice(10, 12), 10);
+            const seconds = parseInt(datetime.slice(12, 14), 10);
+            return new Date(year, month, day, hours, minutes, seconds);
+        },
+        // Toggle Comparison Mode
+        toggleComparisonMode() {
+            this.isComparisonMode = !this.isComparisonMode;
+            if (this.isComparisonMode) {
+                this.fetchComparisonData(); // Fetch and render comparison data
+            } else {
+                this.fetchData(); // Fetch and render normal data
+            }
+        },
+        fetchComparisonData() {
+            const meterSNs = [
+                "24112209220004", "24060404690001", "24060410030004",
+                "24061901790001", "24060410030003", "24060410030002",
+                "24060404690002", "24112209220002", "24112209220003",
+                "24112209220006", "24112209220005"
+            ];
+
+            const now = new Date();
+            let startTime = new Date(now);
+            const endTime = new Date(now);
+
+            // Adjust startTime based on selectedTimeRange
+            if (this.selectedTimeRange === "Hourly") {
+                startTime.setDate(now.getDate() - 1); // Last 24 hours
+            } else if (this.selectedTimeRange === "Daily") {
+                startTime.setDate(now.getDate() - 3); // Past 4 days inclusive of today
+                startTime.setHours(0, 0, 0, 0); // Set to the beginning of the day
+                endTime.setHours(23, 59, 59, 999); // Set to the end of today
+            }
+
+            axios.get("https://geibms.com/message_history")
+                .then((response) => {
+                    const rawData = response.data.message_history;
+                    const aggregatedDataBySensor = {};
+
+                    meterSNs.forEach((meterSN) => {
+                        const sensorData = rawData
+                            .filter((entry) => {
+                                const entryTime = this.parseCustomDatetime(entry.datatime);
+
+                                // Ensure entry is within the specified time range
+                                return (
+                                    entry.meterSN === meterSN &&
+                                    entryTime >= startTime &&
+                                    entryTime <= endTime
+                                );
+                            })
+                            .map((entry) => {
+                                const entryTime = this.parseCustomDatetime(entry.datatime);
+
+                                // Align times based on selected time range
+                                if (this.selectedTimeRange === "Hourly") {
+                                    entryTime.setMinutes(0, 0, 0);
+                                } else if (this.selectedTimeRange === "Daily") {
+                                    entryTime.setHours(0, 0, 0, 0);
+                                }
+
+                                return {
+                                    time: entryTime.toISOString(),
+                                    value: entry.EPI,
+                                };
+                            })
+                            .sort((a, b) => new Date(a.time) - new Date(b.time));
+
+                        const aggregatedData = {};
+                        sensorData.forEach((entry, index, array) => {
+                            if (index === 0) return;
+
+                            const previous = array[index - 1];
+                            let difference = entry.value - previous.value;
+
+                            if (difference < -50 || difference > 50) {
+                                difference = 0;
+                            }
+
+                            if (meterSN === "24112209220004") {
+                                difference = (difference / 10) * 48;
+                            }
+
+                            const timeKey = entry.time;
+                            if (!aggregatedData[timeKey]) {
+                                aggregatedData[timeKey] = 0;
+                            }
+                            aggregatedData[timeKey] += Math.abs(difference);
+                        });
+
+                        aggregatedDataBySensor[meterSN] = aggregatedData;
+                    });
+
+                    const chartData = [];
+                    const uniqueLabels = new Set();
+
+                    Object.entries(aggregatedDataBySensor).forEach(([sensor, aggregatedData]) => {
+                        const dataPoints = Object.entries(aggregatedData).map(([time, value]) => {
+                            uniqueLabels.add(time);
+                            return { time, value };
+                        });
+
+                        chartData.push({
+                            label: sensor,
+                            data: dataPoints.map((point) => point.value),
+                        });
+                    });
+
+                    const sortedLabels = Array.from(uniqueLabels)
+                        .sort((a, b) => new Date(a) - new Date(b))
+                        .map((label) => {
+                            const date = new Date(label);
+                            if (this.selectedTimeRange === "Hourly") {
+                                return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                            } else if (this.selectedTimeRange === "Daily") {
+                                return date.toLocaleDateString();
+                            }
+                            return label;
+                        });
+
+                    this.comparisonChartLabels = sortedLabels;
+                    this.comparisonChartData = chartData;
+
+                    console.log("Comparison Chart Data:", this.comparisonChartData);
+                    console.log("Comparison Chart Labels:", this.comparisonChartLabels);
+
+                    this.renderComparisonChart();
+                })
+                .catch((error) => console.error("Error fetching comparison data:", error));
+        },
+
+        renderComparisonChart() {
+            if (!this.comparisonChartData || this.comparisonChartData.length === 0) {
+                console.error("Comparison Chart Data is empty.");
+                return;
+            }
+
+            const datasets = this.comparisonChartData.map((dataset) => ({
+                label: dataset.label, // Sensor label
+                data: this.comparisonChartLabels.map((label, index) => dataset.data[index] || 0), // Fill missing values with 0
+                borderColor: "#" + Math.floor(Math.random() * 16777215).toString(16), // Random color
+                backgroundColor: "rgba(0, 0, 0, 0)", // Transparent
+                fill: false,
+                tension: 0.4,
+                borderWidth: 2,
+                pointRadius: 3,
+            }));
+
+            this.chartLabels = this.comparisonChartLabels;
+            this.chartData = datasets;
+
+            // Render chart
+            this.$refs.chartComponent.renderChart(this.chartLabels, this.chartData);
+        },
+
+
         toggleModal() {
             this.showSettingsModal = !this.showSettingsModal;
         },
@@ -532,6 +718,7 @@ export default {
     background-color: white;
     border-radius: 10px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    padding-bottom: 50px;
 }
 
 /* Modal Overlay */
@@ -651,8 +838,6 @@ export default {
     height: 400px;
     background-color: white;
     border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
 }
 
 .chart-toggle {
@@ -684,5 +869,20 @@ export default {
 .chart-toggle button:hover {
     background-color: #0056b3;
     color: white;
+}
+
+.filters-right .comparison-button {
+    padding: 10px 15px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 14px;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+.filters-right .comparison-button:hover {
+    background-color: #218838;
 }
 </style>
