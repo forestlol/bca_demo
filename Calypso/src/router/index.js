@@ -5,6 +5,7 @@ import MonthlyChart from "@/components/EnergyManagement/MonthlyChart.vue";
 import DailyChart from "@/components/EnergyManagement/DailyChart.vue";
 import HourlyChart from "@/components/EnergyManagement/HourlyChart.vue";
 import HistoricalData from "@/components/EnergyManagement/HistoricalData.vue";
+import EnergyManagementFloorplan from "@/views/EnergyManagementFloorplan.vue";
 // import AutomationManagementView from "../views/AutomationManagementView.vue";
 
 const routes = [
@@ -37,6 +38,10 @@ const routes = [
     path: "/energy-management/historical-data",
     name: "HistoricalData",
     component: HistoricalData, // Energy Management with dynamic chart selection
+  },{
+    path: "/energy-management/deviceFloorplan",
+    name: "EnergyManagementFloorplan",
+    component: EnergyManagementFloorplan, // Energy Management with dynamic chart selection
   },
 ];
 

@@ -29,9 +29,9 @@
                     <option value="24060404690002">FCU 9</option>
                     <option value="24060410030003">FCU 10</option>
                     <option value="24060410030004">FCU 11</option>
-                    <!-- <option value="24112209220004">24112209220004 - Meter 7 - *LIGHTING</option> -->
                     <option value="24112209220003">FCU 12</option>
                     <option value="24112209220005">FCU 13</option>
+                    <option value="24112209220004">Lighting Meter</option>
                 </select>
 
                 <input type="date" v-model="startDate" @change="onDateChange" placeholder="Choose Date" />
@@ -237,7 +237,7 @@ export default {
             const labels = [];
             const data = [];
             // const meterSNs = ["24060410030004", "24061901790001", "24060410030003", "24060404690001", "24060410030002", "24060404690002"];
-            const meterSNs = ["24060404690001", "24060410030004", "24061901790001", "24060410030003", "24060410030002", "24060404690002", "24112209220002", "24112209220003", "24112209220006", "24112209220005"];
+            const meterSNs = ["24112209220004", "24060404690001", "24060410030004", "24061901790001", "24060410030003", "24060410030002", "24060404690002", "24112209220002", "24112209220003", "24112209220006", "24112209220005"];
             // excluded 24112209220004, to be added again
             // Set default start and end dates if not provided
             const now = new Date();
@@ -273,6 +273,8 @@ export default {
                 .get("https://geibms.com/message_history")
                 .then((response) => {
                     const rawData = response.data.message_history;
+                    // const filteredForSpecificMeter = rawData.filter(entry => entry.meterSN === "24112209220004");
+                    // console.log("Filtered Raw Data for 24112209220004:", filteredForSpecificMeter);
 
                     // Filter data for the selected meterSN
                     let filteredData = rawData.filter((entry) => {
@@ -322,30 +324,37 @@ export default {
                                                 .padStart(2, "0")}`;
 
                                 // Add transformation for meter 24112209220004
-                                const value = meterSN === "24112209220004" ? (entry.EPI % 10) * 48 : entry.EPI;
+                                // const value = meterSN === "24112209220004" ? (entry.EPI % 10) * 48 : entry.EPI;
 
-                                return { ...entry, alignedTime, value };
+                                return { ...entry, alignedTime, value: entry.EPI };
                             });
 
                         differencesBySensor[meterSN] = sensorData.map((entry, index) => {
+                            let difference = 0;
+
                             if (index === sensorData.length - 1) {
                                 // Compare the last data point with the previous one
                                 const previous = sensorData[index - 1];
                                 if (previous) {
-                                    const difference = previous.value - entry.value;
-                                    return { time: entry.alignedTime, value: Math.abs(difference) };
+                                    difference = previous.value - entry.value;
                                 }
-                                return { time: entry.alignedTime, value: 0 };
+                            } else {
+                                // Compare current entry with the next one
+                                const next = sensorData[index + 1];
+                                difference = entry.value - next.value;
                             }
-                            // Compare current entry with the next one
-                            const next = sensorData[index + 1];
-                            const difference = entry.value - next.value;
 
                             // Filter out differences beyond the threshold (-50 to 50)
-                            if (difference >= -50 && difference <= 50) {
-                                return { time: entry.alignedTime, value: Math.abs(difference) };
+                            if (difference < -50 || difference > 50) {
+                                difference = 0; // Ignore outliers
                             }
-                            return { time: entry.alignedTime, value: 0 };
+
+                            // Apply transformation for meter "24112209220004" after calculating the difference
+                            if (meterSN === "24112209220004") {
+                                difference = (difference / 10) * 48;
+                            }
+
+                            return { time: entry.alignedTime, value: Math.abs(difference) };
                         });
                     });
 

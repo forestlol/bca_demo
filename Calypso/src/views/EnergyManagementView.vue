@@ -182,7 +182,7 @@ export default {
             this.processChartData();
         },
         processChartData() {
-            const meterSNs = ["24060404690001", "24060410030004", "24061901790001", "24060410030003", "24060410030002", "24060404690002", "24112209220002", "24112209220003", "24112209220006", "24112209220005"];
+            const meterSNs = ["24112209220004", "24060404690001", "24060410030004", "24061901790001", "24060410030003", "24060410030002", "24060404690002", "24112209220002", "24112209220003", "24112209220006", "24112209220005"];
             // excluded 24112209220004, to be added again
             const now = new Date();
             const startTime = new Date(now);
@@ -226,24 +226,31 @@ export default {
                             });
 
                         differencesBySensor[meterSN] = sensorData.map((entry, index) => {
+                            let difference = 0;
+
                             if (index === sensorData.length - 1) {
                                 // Compare the last data point with the previous one
                                 const previous = sensorData[index - 1];
                                 if (previous) {
-                                    const difference = previous.EPI - entry.EPI;
-                                    return { time: entry.alignedTime, value: Math.abs(difference) };
+                                    difference = previous.EPI - entry.EPI;
                                 }
-                                return { time: entry.alignedTime, value: 0 };
+                            } else {
+                                // Compare current entry with the next one
+                                const next = sensorData[index + 1];
+                                difference = entry.EPI - next.EPI;
                             }
-                            // Compare current entry with the next one
-                            const next = sensorData[index + 1];
-                            const difference = entry.EPI - next.EPI;
 
                             // Filter out differences beyond the threshold (-50 to 50)
-                            if (difference >= -50 && difference <= 50) {
-                                return { time: entry.alignedTime, value: Math.abs(difference) };
+                            if (difference < -50 || difference > 50) {
+                                difference = 0; // Ignore outliers
                             }
-                            return { time: entry.alignedTime, value: 0 };
+
+                            // Apply transformation for meter "24112209220004"
+                            if (meterSN === "24112209220004") {
+                                difference = (difference / 10) * 48;
+                            }
+
+                            return { time: entry.alignedTime, value: Math.abs(difference) };
                         });
                     });
 
