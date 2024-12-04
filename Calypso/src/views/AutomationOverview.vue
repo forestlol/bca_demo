@@ -188,7 +188,6 @@ export default {
   flex-direction: column;
   gap: 20px;
   padding: 20px;
-  background-color: #1e1e1e;
   color: white;
 }
 
@@ -199,7 +198,9 @@ export default {
 
 .floor-plan-container {
   flex: 2;
-  background-color: #2c2c2c;
+  background-color: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  color: black;
   border-radius: 10px;
   padding: 20px;
 }
@@ -261,7 +262,8 @@ export default {
 
 .optimization-control-tabs {
   flex: 1;
-  background-color: #2c2c2c;
+  background-color: #f5f5f5;
+  border: 1px solid #e0e0e0;
   border-radius: 10px;
   padding: 20px;
 }
@@ -303,10 +305,11 @@ export default {
 .control-card {
   padding: 20px;
   /* Larger padding for better spacing */
-  background-color: #444;
+  background-color: #f5f5f5;
+  border: 1px solid #e0e0e0;
   border-radius: 15px;
   /* More rounded corners */
-  color: white;
+  color: black;
   text-align: center;
   font-size: 1.2em;
   /* Slightly larger font for visibility */
@@ -327,7 +330,9 @@ export default {
 
 .logs-container {
   flex: 1;
-  background-color: #2c2c2c;
+  background-color: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  color: black;
   border-radius: 10px;
   padding: 20px;
 }
@@ -340,17 +345,17 @@ export default {
 
 .logs-table th,
 .logs-table td {
-  border: 1px solid #444;
+  border: 1px solid #e4e4e4;
   padding: 10px;
   text-align: left;
 }
 
 .logs-table th {
-  background-color: #444;
+  background-color: #e4e4e4;
 }
 
 .logs-table tr:nth-child(even) {
-  background-color: #333;
+  background-color: #e4e4e4;
 }
 
 .icon {
