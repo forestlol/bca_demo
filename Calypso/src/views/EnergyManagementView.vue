@@ -170,11 +170,9 @@ export default {
             dailyChartData: [], // Daily chart data
             intervalId: null, // For periodic data fetching
             floorplanOptions: [
-                { label: "B05-11/12", value: "B05-11-12.png" },
-                { label: "B05-13/14", value: "B05-13-14.png" },
-                { label: "Landscape", value: "B05-Landscape.png" },
+                { label: "GE Canteen", value: "Floorplan.jpg" },
             ],
-            selectedImage: "B05-Landscape.png", // Default image
+            selectedImage: "Floorplan.jpg", // Default image
         };
     },
     methods: {
@@ -548,7 +546,6 @@ export default {
 <style scoped>
 /* Styles from your initial implementation */
 .dashboard-view {
-    padding: 5%;
     display: flex;
     flex-direction: column;
     gap: 20px;

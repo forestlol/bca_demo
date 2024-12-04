@@ -1,11 +1,14 @@
 import { createRouter, createWebHistory } from "vue-router";
 import DashboardView from "../views/DashboardView.vue";
 import EnergyManagementView from "../views/EnergyManagementView.vue";
-import MonthlyChart from "@/components/EnergyManagement/MonthlyChart.vue";
-import DailyChart from "@/components/EnergyManagement/DailyChart.vue";
-import HourlyChart from "@/components/EnergyManagement/HourlyChart.vue";
 import HistoricalData from "@/components/EnergyManagement/HistoricalData.vue";
+import WaterHistoricalData from "@/components/WaterManagement/HistoricalData.vue";
 import EnergyManagementFloorplan from "@/views/EnergyManagementFloorplan.vue";
+import WaterManagementFloorplan from "@/views/WaterManagementFloorplan.vue";
+import DataLog from "@/components/EnergyManagement/DataLog.vue";
+import waterDataLog from "@/components/WaterManagement/DataLog.vue"; 
+import WaterManagementView from "@/views/WaterManagementView.vue";
+import automationOverview from "@/views/AutomationOverview.vue";
 // import AutomationManagementView from "../views/AutomationManagementView.vue";
 
 const routes = [
@@ -20,28 +23,44 @@ const routes = [
     component: EnergyManagementView, // Energy Management with dynamic chart selection
   },
   {
-    path: "/energy-management/monthly",
-    name: "MonthlyChart",
-    component: MonthlyChart, // Energy Management with dynamic chart selection
-  },
-  {
-    path: "/energy-management/daily",
-    name: "DailyChart",
-    component: DailyChart, // Energy Management with dynamic chart selection
-  },
-  {
-    path: "/energy-management/hourly",
-    name: "HourlyChart",
-    component: HourlyChart, // Energy Management with dynamic chart selection
+    path: "/water-management",
+    name: "WaterManagementView",
+    component: WaterManagementView, // Energy Management with dynamic chart selection
   },
   {
     path: "/energy-management/historical-data",
     name: "HistoricalData",
     component: HistoricalData, // Energy Management with dynamic chart selection
-  },{
+  },
+  {
     path: "/energy-management/deviceFloorplan",
     name: "EnergyManagementFloorplan",
     component: EnergyManagementFloorplan, // Energy Management with dynamic chart selection
+  },
+  {
+    path: "/water-management/deviceFloorplan",
+    name: "WaterManagementFloorplan",
+    component: WaterManagementFloorplan, // Energy Management with dynamic chart selection
+  },
+  {
+    path: "/energy-management/dataLog",
+    name: "DataLog",
+    component: DataLog, // Energy Management with dynamic chart selection
+  },
+  {
+    path: "/water-management/historical-data",
+    name: "WaterHistoricalData",
+    component: WaterHistoricalData, // Energy Management with dynamic chart selection
+  },
+  {
+    path: "/water-management/dataLog",
+    name: "waterDataLog",
+    component: waterDataLog, // Energy Management with dynamic chart selection
+  },
+  {
+    path: "/automation-management",
+    name: "automationOverview",
+    component: automationOverview, // Energy Management with dynamic chart selection
   },
 ];
 

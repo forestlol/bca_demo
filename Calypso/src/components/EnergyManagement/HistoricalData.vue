@@ -31,7 +31,7 @@
                     <option value="24060410030004">FCU 11</option>
                     <option value="24112209220003">FCU 12</option>
                     <option value="24112209220005">FCU 13</option>
-                    <option value="24112209220004">Lighting Meter</option>
+                    <option value="24112209220004">Overall Lighting</option>
                 </select>
 
                 <input type="date" v-model="startDate" @change="onDateChange" placeholder="Choose Date" />
@@ -204,6 +204,21 @@ export default {
                 "24112209220006", "24112209220005"
             ];
 
+            // Mapping of meterSN to their corresponding names
+            const meterSNToName = {
+                "24061901790001": "FCU 4",
+                "24060404690001": "FCU 5",
+                "24112209220002": "FCU 6",
+                "24060410030002": "FCU 7",
+                "24112209220006": "FCU 8",
+                "24060404690002": "FCU 9",
+                "24060410030003": "FCU 10",
+                "24060410030004": "FCU 11",
+                "24112209220003": "FCU 12",
+                "24112209220005": "FCU 13",
+                "24112209220004": "Overall Lighting"
+            };
+
             const now = new Date();
             let startTime = new Date(now);
             const endTime = new Date(now);
@@ -285,8 +300,9 @@ export default {
                             return { time, value };
                         });
 
+                        const name = meterSNToName[sensor] || sensor; // Replace meterSN with name
                         chartData.push({
-                            label: sensor,
+                            label: name,
                             data: dataPoints.map((point) => point.value),
                         });
                     });
@@ -306,7 +322,7 @@ export default {
                     this.comparisonChartLabels = sortedLabels;
                     this.comparisonChartData = chartData;
 
-                    console.log("Comparison Chart Data:", this.comparisonChartData);
+                    console.log("Comparison Chart Data with Names:", this.comparisonChartData);
                     console.log("Comparison Chart Labels:", this.comparisonChartLabels);
 
                     this.renderComparisonChart();
@@ -320,8 +336,24 @@ export default {
                 return;
             }
 
+            // Mapping of meterSN to human-readable names
+            const meterSNToName = {
+                "24061901790001": "FCU 4",
+                "24060404690001": "FCU 5",
+                "24112209220002": "FCU 6",
+                "24060410030002": "FCU 7",
+                "24112209220006": "FCU 8",
+                "24060404690002": "FCU 9",
+                "24060410030003": "FCU 10",
+                "24060410030004": "FCU 11",
+                "24112209220003": "FCU 12",
+                "24112209220005": "FCU 13",
+                "24112209220004": "Overall Lighting"
+            };
+
+            // Transform dataset labels from meterSN to names
             const datasets = this.comparisonChartData.map((dataset) => ({
-                label: dataset.label, // Sensor label
+                label: meterSNToName[dataset.label] || dataset.label, // Replace meterSN with name if available
                 data: this.comparisonChartLabels.map((label, index) => dataset.data[index] || 0), // Fill missing values with 0
                 borderColor: "#" + Math.floor(Math.random() * 16777215).toString(16), // Random color
                 backgroundColor: "rgba(0, 0, 0, 0)", // Transparent
@@ -337,7 +369,6 @@ export default {
             // Render chart
             this.$refs.chartComponent.renderChart(this.chartLabels, this.chartData);
         },
-
 
         toggleModal() {
             this.showSettingsModal = !this.showSettingsModal;
@@ -681,7 +712,6 @@ export default {
     background-color: #f9f9f9;
     border-radius: 10px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    padding-top: 5%;
 }
 
 .filters {

@@ -1,35 +1,8 @@
 <template>
   <div class="heatmap-container">
-    <!-- Toolbar Section -->
-    <div class="toolbar">
-      <div class="toolbar-item">
-        <label>
-          <input type="checkbox" v-model="autoRefresh" />
-          Auto refresh
-        </label>
-      </div>
-      <div class="toolbar-item">
-        <label for="floor-selection">Choose Floor:</label>
-        <select id="floor-selection" v-model="selectedFloor">
-          <option>GE Canteen</option>
-          <option>Floor 2</option>
-          <option>Floor 3</option>
-        </select>
-      </div>
-      <div class="toolbar-item">
-        <label>Statistical time:</label>
-        <input type="datetime-local" v-model="startDateTime" />
-        <span>to</span>
-        <input type="datetime-local" v-model="endDateTime" />
-      </div>
-      <div class="toolbar-item">
-        <button @click="fetchComparisonData">🔍 Search</button>
-      </div>
-    </div>
-
     <!-- Title Bar -->
     <div class="heatmap-title-bar">
-      Heatmap Distribution Chart - <span class="subtitle">{{ selectedFloor }}</span>
+      Floorplan - <span class="subtitle">{{ selectedFloor }}</span>
     </div>
 
     <!-- Floorplan Section -->
@@ -71,6 +44,11 @@ export default {
         { id: 8, x: 37, y: 31, title: "FCU 11", meterId: "24060410030004", dailyUsage: 0 },
         { id: 9, x: 21, y: 60, title: "FCU 12", meterId: "24112209220003", dailyUsage: 0 },
         { id: 10, x: 21, y: 31, title: "FCU 13", meterId: "24112209220005", dailyUsage: 0 },
+        { id: 11, x: 14, y: 46, title: "FCU 13", meterId: "24112209220004", dailyUsage: 0 },
+        { id: 12, x: 28, y: 46, title: "FCU 13", meterId: "24112209220004", dailyUsage: 0 },
+        { id: 13, x: 43, y: 46, title: "FCU 13", meterId: "24112209220004", dailyUsage: 0 },
+        { id: 14, x: 60, y: 46, title: "FCU 13", meterId: "24112209220004", dailyUsage: 0 },
+        { id: 15, x: 74, y: 46, title: "FCU 13", meterId: "24112209220004", dailyUsage: 0 },
       ],
       tooltip: {
         visible: false,
@@ -241,7 +219,7 @@ export default {
   width: 20px;
   height: 20px;
   background-color: transparent;
-  border: 2px solid yellow;
+  border: 2px solid lightgreen;
   border-radius: 50%;
   cursor: pointer;
 }

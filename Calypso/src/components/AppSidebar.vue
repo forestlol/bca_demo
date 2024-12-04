@@ -47,7 +47,7 @@
                                 </router-link>
                             </li>
                             <li>
-                                <router-link to="/energy-management/data-logs" class="menu-link">
+                                <router-link to="/energy-management/dataLog" class="menu-link">
                                     Data Logs
                                 </router-link>
                             </li>               
@@ -80,7 +80,7 @@
                                 </router-link>
                             </li>                            
                             <li>
-                                <router-link to="/water-management/data-logs" class="menu-link">
+                                <router-link to="/water-management/dataLog" class="menu-link">
                                     Data Logs
                                 </router-link>
                             </li>
