@@ -311,13 +311,13 @@ export default {
   /* More rounded corners */
   color: black;
   text-align: center;
-  font-size: 1.2em;
+  font-size: 1em;
   /* Slightly larger font for visibility */
 }
 
 .optimization-card .icon,
 .control-card .icon {
-  font-size: 48px;
+  font-size: 1em;
   /* Larger icon size */
   margin-bottom: 15px;
   color: #007bff;
@@ -359,7 +359,7 @@ export default {
 }
 
 .icon {
-  font-size: 36px;
+  font-size: 2em;
   margin-bottom: 10px;
   color: #007bff;
 }
