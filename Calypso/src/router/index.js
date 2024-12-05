@@ -9,6 +9,9 @@ import DataLog from "@/components/EnergyManagement/DataLog.vue";
 import waterDataLog from "@/components/WaterManagement/DataLog.vue"; 
 import WaterManagementView from "@/views/WaterManagementView.vue";
 import automationOverview from "@/views/AutomationOverview.vue";
+import FaultCalling from "@/views/FaultCalling.vue";
+import ScheduledCommand from "@/views/ScheduledCommand.vue";
+import ConditionalCommand from "@/views/ConditionalCommand.vue";
 // import AutomationManagementView from "../views/AutomationManagementView.vue";
 
 const routes = [
@@ -61,6 +64,21 @@ const routes = [
     path: "/automation-management",
     name: "automationOverview",
     component: automationOverview, // Energy Management with dynamic chart selection
+  },
+  {
+    path: "/automation-management/fault-calling",
+    name: "FaultCalling",
+    component: FaultCalling, // Energy Management with dynamic chart selection
+  },
+  {
+    path: "/automation-management/scheduleCommand",
+    name: "ScheduledCommand",
+    component: ScheduledCommand, // Energy Management with dynamic chart selection
+  },
+  {
+    path: "/automation-management/conditionalCommand",
+    name: "ConditionalCommand",
+    component: ConditionalCommand, // Energy Management with dynamic chart selection
   },
 ];
 

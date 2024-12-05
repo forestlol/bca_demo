@@ -30,7 +30,7 @@
             <FloorplanComponent />
           </div>
           <div v-if="activeTab === 'activityHeatMap'" class="floorplan-wrapper">
-            <FloorplanComponent />
+            <HeatmapComponent />
           </div>
         </div>
       </div>
@@ -97,7 +97,12 @@
     <!-- Logs Section -->
     <div class="logs-section">
       <div class="logs-container">
-        <h3>Schedule Command Logs</h3>
+        <div class="logs-header">
+          <h3>Schedule Command Logs</h3>
+          <router-link to="/automation-management/scheduleCommand" class="view-more-button">
+            View More
+          </router-link>
+        </div>
         <table class="logs-table">
           <thead>
             <tr>
@@ -125,7 +130,13 @@
       </div>
 
       <div class="logs-container">
-        <h3>Conditional Command Logs</h3>
+        <div class="logs-header">
+          <h3>Conditional Command Logs</h3>
+          <router-link to="/automation-management/conditionalCommand" class="view-more-button">
+            View More
+          </router-link>
+        </div>
+
         <table class="logs-table">
           <thead>
             <tr>
@@ -157,10 +168,12 @@
 
 <script>
 import FloorplanComponent from "@/components/AutomationFloorplanComponent.vue"; // Update path as needed
+import HeatmapComponent from "@/components/AutomationHeatmapComponent.vue";
 
 export default {
   components: {
     FloorplanComponent,
+    HeatmapComponent,
   },
   data() {
     return {
@@ -381,5 +394,26 @@ export default {
 .red-text {
   color: red;
   font-weight: bold;
+}
+
+.logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.view-more-button {
+  padding: 10px 15px;
+  background-color: #007bff;
+  color: white;
+  text-decoration: none;
+  border-radius: 5px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.view-more-button:hover {
+  background-color: #0056b3;
 }
 </style>
