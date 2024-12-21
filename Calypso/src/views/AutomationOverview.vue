@@ -48,46 +48,110 @@
         <div class="control-content">
           <div v-if="activeControlTab === 'optimization'" class="grid-container expanded-grid">
             <div class="optimization-card">
-              <i class="fas fa-chart-line icon"></i>
-              <h4>Estimated Energy Savings</h4>
-              <p>Details or Metrics</p>
+              <div class="card-header">
+                <i class="fas fa-chart-line"></i>
+                <span>Estimated Energy Savings</span>
+              </div>
+              <div class="card-content">
+                <div class="metric-value">245 kWh</div>
+                <div class="metric-subtitle">Monthly Savings</div>
+              </div>
             </div>
             <div class="optimization-card">
-              <i class="fas fa-cogs icon"></i>
-              <h4>Conditional Logic</h4>
-              <p>Details or Configuration</p>
+              <div class="card-header">
+                <i class="fas fa-cogs"></i>
+                <span>Conditional Logic</span>
+              </div>
+              <div class="card-content">
+                <div class="metric-value">8</div>
+                <div class="metric-subtitle">Active Rules</div>
+              </div>
             </div>
             <div class="optimization-card">
-              <i class="fas fa-clock icon"></i>
-              <h4>Schedule</h4>
-              <p>Details or Configuration</p>
+              <div class="card-header">
+                <i class="fas fa-clock"></i>
+                <span>Schedule</span>
+              </div>
+              <div class="card-content">
+                <div class="metric-value">12</div>
+                <div class="metric-subtitle">Active Schedules</div>
+              </div>
             </div>
             <div class="optimization-card">
-              <i class="fas fa-percentage icon"></i>
-              <h4>% Device Optimized</h4>
-              <p>Optimization Metrics</p>
+              <div class="card-header">
+                <i class="fas fa-percentage"></i>
+                <span>Device Optimized</span>
+              </div>
+              <div class="card-content">
+                <div class="metric-value">85%</div>
+                <div class="metric-subtitle">Current Optimization</div>
+              </div>
             </div>
           </div>
           <div v-if="activeControlTab === 'control'" class="grid-container expanded-grid">
             <div class="control-card">
-              <i class="fas fa-thermometer-half icon"></i>
-              <h4>Set Temperature</h4>
-              <p>Adjust Temperature</p>
+              <div class="card-header">
+                <i class="fas fa-thermometer-half"></i>
+                <span>Set Temperature</span>
+              </div>
+              <div class="card-content">
+                <div class="temperature-control">
+                  <div class="temp-input-container">
+                    <input type="number" v-model="setTemperature" min="16" max="30" step="1" class="temp-input" placeholder="22">
+                    <span class="temp-unit-label">°C</span>
+                  </div>
+                  <button @click="setTemp" class="set-btn">Set</button>
+                </div>
+              </div>
             </div>
             <div class="control-card">
-              <i class="fas fa-sliders-h icon"></i>
-              <h4>Control Mode</h4>
-              <p>Switch Modes</p>
+              <div class="card-header">
+                <i class="fas fa-sliders-h"></i>
+                <span>Control Mode</span>
+              </div>
+              <div class="card-content">
+                <div class="mode-switches">
+                  <button 
+                    v-for="mode in modes" 
+                    :key="mode"
+                    :class="['mode-btn', { active: currentMode === mode }]"
+                    @click="setMode(mode)"
+                  >
+                    {{ mode }}
+                  </button>
+                </div>
+              </div>
             </div>
             <div class="control-card">
-              <i class="fas fa-power-off icon"></i>
-              <h4>Drive On/Off</h4>
-              <p>Toggle Power</p>
+              <div class="card-header">
+                <i class="fas fa-power-off"></i>
+                <span>Drive On/Off</span>
+              </div>
+              <div class="card-content">
+                <div class="drive-control">
+                  <button 
+                    :class="['drive-btn', { active: driveStatus }]"
+                    @click="toggleDrive"
+                  >
+                    {{ driveStatus ? 'ON' : 'OFF' }}
+                  </button>
+                </div>
+              </div>
             </div>
             <div class="control-card">
-              <i class="fas fa-temperature-low icon"></i>
-              <h4>Room Temperature</h4>
-              <p>Read Current Temperature</p>
+              <div class="card-header">
+                <i class="fas fa-temperature-low"></i>
+                <span>Temperature simulation</span>
+              </div>
+              <div class="card-content">
+                <div class="room-temp">
+                  <div class="digital-display">
+                    <span class="temp-value">19</span>
+                    <span class="temp-unit">°C</span>
+                  </div>
+                  <div class="temp-status">{{ getTemperatureStatus(19) }}</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -179,6 +243,15 @@ export default {
     return {
       activeTab: "deviceInfo",
       activeControlTab: "optimization",
+      setTemperature: 22,
+      currentMode: 'Mode 1',
+      modes: ['Mode 1', 'Mode 2', 'Mode 3', 'Mode 4'],
+      driveStatus: false,
+      // Random values for optimization metrics
+      energySavings: 245,
+      conditionalRules: 8,
+      scheduleCount: 12,
+      optimizationPercentage: 85,
       floorplanImage: require("@/assets/Floorplan.jpg"),
       scheduleLogs: [
         { date: "2024-12-03", commandType: "Turn On", state: "ON", status: "Success" },
@@ -192,6 +265,25 @@ export default {
       ],
     };
   },
+  methods: {
+    setTemp() {
+      // Implement temperature setting logic here
+      console.log('Setting temperature to:', this.setTemperature);
+    },
+    setMode(mode) {
+      this.currentMode = mode;
+      console.log('Switching to:', mode);
+    },
+    toggleDrive() {
+      this.driveStatus = !this.driveStatus;
+      console.log('Drive status:', this.driveStatus ? 'ON' : 'OFF');
+    },
+    getTemperatureStatus(temp) {
+      if (temp <= 20) return 'Cool';
+      if (temp <= 24) return 'Warm';
+      return 'Hot';
+    },
+  }
 };
 </script>
 
@@ -201,7 +293,7 @@ export default {
   flex-direction: column;
   gap: 20px;
   padding: 20px;
-  color: white;
+  color: black;
 }
 
 .top-section {
@@ -308,32 +400,238 @@ export default {
 }
 
 .expanded-grid {
+  display: grid;
   grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(2, auto);
-  gap: 30px;
-  /* Increased gap for spacing */
+  gap: 20px;
+  padding: 20px;
+  margin: 0;
+}
+
+.optimization-card {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  min-height: 160px;
+  transition: transform 0.2s ease;
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 15px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #eee;
+}
+
+.card-header i,
+.control-card .card-header i {
+  font-size: 14px;
+  color: #2196F3;
+}
+
+.card-header span,
+.control-card .card-header span {
+  font-size: 13px;
+  color: #333;
+  font-weight: normal;
+}
+
+.optimization-card .card-header,
+.control-card .card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 15px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #eee;
 }
 
 .optimization-card,
 .control-card {
-  padding: 20px;
-  /* Larger padding for better spacing */
-  background-color: #f5f5f5;
-  border: 1px solid #e0e0e0;
-  border-radius: 15px;
-  /* More rounded corners */
-  color: black;
-  text-align: center;
-  font-size: 1em;
-  /* Slightly larger font for visibility */
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  min-height: 160px;
+  transition: transform 0.2s ease;
+  overflow: hidden;
 }
 
-.optimization-card .icon,
-.control-card .icon {
-  font-size: 1em;
-  /* Larger icon size */
-  margin-bottom: 15px;
-  color: #007bff;
+.card-content {
+  padding: 20px 15px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.metric-value {
+  font-size: 28px;
+  font-weight: 600;
+  color: #2196F3;
+  margin-bottom: 8px;
+}
+
+.metric-subtitle {
+  font-size: 12px;
+  color: #666;
+}
+
+.control-card {
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.card-header {
+  padding: 12px 15px;
+  border-bottom: 1px solid #f0f0f0;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.temperature-control {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+.temp-input-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.temp-input {
+  width: 32px;
+  border: none;
+  padding: 4px 0;
+  text-align: right;
+  font-size: 16px;
+  color: #333;
+  -moz-appearance: textfield;
+}
+
+.temp-input::-webkit-outer-spin-button,
+.temp-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.temp-unit-label {
+  color: #666;
+  font-size: 14px;
+  margin-left: 2px;
+  user-select: none;
+}
+
+.temp-input:focus {
+  outline: none;
+}
+
+.temp-input-container:focus-within {
+  border-color: #2196F3;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+}
+
+.set-btn {
+  padding: 8px 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.set-btn:hover {
+  background-color: #45a049;
+}
+
+.mode-switches {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  width: 100%;
+  padding: 0 10px;
+}
+
+.mode-btn {
+  padding: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background-color: white;
+  color: #333;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.mode-btn:hover {
+  background-color: #e9e9e9;
+}
+
+.mode-btn.active {
+  background-color: #2196F3;
+  color: white;
+  border-color: #2196F3;
+}
+
+.mode-btn.active:hover {
+  background-color: #1976D2;
+}
+
+.drive-control {
+  text-align: center;
+  width: 100%;
+}
+
+.drive-btn {
+  padding: 12px 40px;
+  border: 2px solid #f44336;
+  border-radius: 6px;
+  background-color: white;
+  color: #f44336;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+.drive-btn:hover {
+  background-color: #ffebee;
+}
+
+.drive-btn.active {
+  background-color: #4CAF50;
+  border-color: #4CAF50;
+  color: white;
+}
+
+.drive-btn.active:hover {
+  background-color: #43A047;
 }
 
 .logs-section {
@@ -415,5 +713,71 @@ export default {
 
 .view-more-button:hover {
   background-color: #0056b3;
+}
+
+.temperature-control {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.room-temp {
+  margin-top: 15px;
+  text-align: center;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.digital-display {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  font-family: 'Digital', monospace;
+  margin-bottom: 5px;
+}
+
+.temp-value {
+  font-size: 48px;
+  font-weight: bold;
+  color: #00a8ff;
+  text-shadow: 0 0 10px rgba(0, 168, 255, 0.5);
+}
+
+.temp-unit {
+  font-size: 24px;
+  color: #00a8ff;
+  margin-left: 5px;
+}
+
+.temp-status {
+  color: #6c8caa;
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.card-icon {
+  width: 32px;
+  height: 32px;
+  background-color: #f0f7ff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.card-icon i {
+  font-size: 16px;
+  color: #2196F3;
+}
+
+.text-primary {
+  color: #2196F3;
+}
+
+@font-face {
+  font-family: 'Digital';
+  src: url('https://fonts.cdnfonts.com/css/ds-digital') format('woff2');
 }
 </style>

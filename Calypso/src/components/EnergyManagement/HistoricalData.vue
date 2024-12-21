@@ -219,18 +219,13 @@ export default {
                 "24112209220004": "Overall Lighting"
             };
 
+            // Handle default startDate and endDate if not provided
             const now = new Date();
-            let startTime = new Date(now);
-            const endTime = new Date(now);
+            const defaultStartDate = this.startDate ? new Date(this.startDate) : new Date(now.setDate(now.getDate() - 3)); // Default to 3 days ago
+            const defaultEndDate = this.endDate ? new Date(this.endDate) : new Date(); // Default to today
 
-            // Adjust startTime based on selectedTimeRange
-            if (this.selectedTimeRange === "Hourly") {
-                startTime.setDate(now.getDate() - 1); // Last 24 hours
-            } else if (this.selectedTimeRange === "Daily") {
-                startTime.setDate(now.getDate() - 3); // Past 4 days inclusive of today
-                startTime.setHours(0, 0, 0, 0); // Set to the beginning of the day
-                endTime.setHours(23, 59, 59, 999); // Set to the end of today
-            }
+            // Ensure the end date includes the entire day
+            defaultEndDate.setHours(23, 59, 59, 999);
 
             axios.get("https://geibms.com/message_history")
                 .then((response) => {
@@ -242,11 +237,11 @@ export default {
                             .filter((entry) => {
                                 const entryTime = this.parseCustomDatetime(entry.datatime);
 
-                                // Ensure entry is within the specified time range
+                                // Filter by meterSN and ensure the entry is within the specified date range
                                 return (
                                     entry.meterSN === meterSN &&
-                                    entryTime >= startTime &&
-                                    entryTime <= endTime
+                                    entryTime >= defaultStartDate &&
+                                    entryTime <= defaultEndDate
                                 );
                             })
                             .map((entry) => {
