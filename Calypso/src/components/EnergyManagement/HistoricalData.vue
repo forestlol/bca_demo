@@ -415,7 +415,8 @@ export default {
         },
         onDateChange() {
             // Call processChartData when the date range changes
-            this.processChartData(this.startDate, this.endDate);
+            this.fetchComparisonData();
+            this.processChartData(this.startDate, this.endDate);            
         },
         computeBaselineData() {
             // Load the baseline settings for the new time range
