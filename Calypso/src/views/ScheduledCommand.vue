@@ -1,6 +1,8 @@
 <template>
     <div class="logs-container">
-        <h3 class="logs-header">Schedule Command Logs</h3>
+        <div class="logs-header">
+            <h3>Schedule Command Logs</h3>
+        </div>
         <table class="logs-table">
             <thead>
                 <tr>
@@ -11,15 +13,17 @@
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="(log, index) in logs" :key="index">
+                <tr v-if="scheduleLogs.length === 0">
+                    <td colspan="4" class="no-data">No Data available</td>
+                </tr>
+                <tr v-else v-for="(log, index) in scheduleLogs" :key="index">
                     <td>{{ log.date }}</td>
                     <td>{{ log.commandType }}</td>
                     <td :class="{ 'green-text': log.state === 'ON', 'red-text': log.state === 'OFF' }">
                         {{ log.state }}
                     </td>
                     <td>
-                        <span
-                            :class="{ 'green-text': log.status === 'Success', 'red-text': log.status === 'Unsuccessful' }">
+                        <span :class="{ 'green-text': log.status === 'Success', 'red-text': log.status === 'Unsuccessful' }">
                             {{ log.status === 'Success' ? '✅' : '❌' }}
                         </span>
                     </td>
@@ -33,13 +37,20 @@
 export default {
     data() {
         return {
-            logs: [
-                { date: "2024-12-03", commandType: "Turn On", state: "ON", status: "Success" },
-                { date: "2024-12-03", commandType: "Turn Off", state: "OFF", status: "Unsuccessful" },
-                { date: "2024-12-03", commandType: "Set Temp", state: "ON", status: "Success" },
-            ],
+            scheduleLogs: [] // Initialize as an empty array
         };
     },
+    mounted() {
+        console.log('Mounted: Retrieving command logs...');
+        this.retrieveCommandLogs(); // Call the method to retrieve logs
+    },
+    methods: {
+        retrieveCommandLogs() {
+            const logs = JSON.parse(localStorage.getItem('commandLogs')) || [];
+            console.log('Retrieved logs:', logs);
+            this.scheduleLogs = logs; // Set the retrieved logs to the data property
+        }
+    }
 };
 </script>
 

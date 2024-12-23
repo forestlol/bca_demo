@@ -97,10 +97,11 @@
               <div class="card-content">
                 <div class="temperature-control">
                   <div class="temp-input-container">
-                    <input type="number" v-model="setTemperature" min="16" max="30" step="1" class="temp-input" placeholder="22">
+                    <input type="number" v-model="setTemperature" min="16" max="30" step="1" class="temp-input"
+                      placeholder="22">
                     <span class="temp-unit-label">°C</span>
                   </div>
-                  <button @click="setTemp" class="set-btn">Set</button>
+                  <button @click="storeTemperatureCommand" class="set-btn">Set</button>
                 </div>
               </div>
             </div>
@@ -111,12 +112,8 @@
               </div>
               <div class="card-content">
                 <div class="mode-switches">
-                  <button 
-                    v-for="mode in modes" 
-                    :key="mode"
-                    :class="['mode-btn', { active: currentMode === mode }]"
-                    @click="setMode(mode)"
-                  >
+                  <button v-for="mode in modes" :key="mode" :class="['mode-btn', { active: currentMode === mode }]"
+                    @click="setMode(mode)">
                     {{ mode }}
                   </button>
                 </div>
@@ -129,10 +126,7 @@
               </div>
               <div class="card-content">
                 <div class="drive-control">
-                  <button 
-                    :class="['drive-btn', { active: driveStatus }]"
-                    @click="toggleDrive"
-                  >
+                  <button :class="['drive-btn', { active: driveStatus }]" @click="toggleDrive">
                     {{ driveStatus ? 'ON' : 'OFF' }}
                   </button>
                 </div>
@@ -177,7 +171,10 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(log, index) in scheduleLogs" :key="index">
+            <tr v-if="scheduleLogs.length === 0">
+              <td colspan="4" class="no-data">No Data available</td>
+            </tr>
+            <tr v-else v-for="(log, index) in scheduleLogs" :key="index">
               <td>{{ log.date }}</td>
               <td>{{ log.commandType }}</td>
               <td :class="{ 'green-text': log.state === 'ON', 'red-text': log.state === 'OFF' }">
@@ -253,30 +250,76 @@ export default {
       scheduleCount: 12,
       optimizationPercentage: 85,
       floorplanImage: require("@/assets/Floorplan.jpg"),
-      scheduleLogs: [
-        { date: "2024-12-03", commandType: "Turn On", state: "ON", status: "Success" },
-        { date: "2024-12-03", commandType: "Turn Off", state: "OFF", status: "Unsuccessful" },
-        { date: "2024-12-03", commandType: "Set Temp", state: "ON", status: "Success" },
-      ],
+      scheduleLogs: [],
       conditionalLogs: [
         { date: "2024-12-03", commandType: "Adjust Temp", state: "OFF", status: "Unsuccessful" },
         { date: "2024-12-03", commandType: "Mode Switch", state: "ON", status: "Success" },
         { date: "2024-12-03", commandType: "Turn Off", state: "OFF", status: "Unsuccessful" },
       ],
+      commandLogs: []
     };
   },
+  mounted() {
+    this.scheduleLogs = []; // Clear existing logs
+    this.retrieveCommandLogs(); // Retrieve logs from local storage
+  },
   methods: {
-    setTemp() {
-      // Implement temperature setting logic here
-      console.log('Setting temperature to:', this.setTemperature);
+    storeTemperatureCommand() {
+      const currentDate = new Date().toISOString().split('T')[0]; // Get the current date in YYYY-MM-DD format
+      const commandType = 'Set temperature';
+      const state = this.setTemperature; // Read temperature from input
+      const status = 'Success'; // Assuming status is always success for this command
+
+      const commandLog = {
+        date: currentDate,
+        commandType: commandType,
+        state: state + "°C", // Append °C to the state
+        status: status
+      };
+
+      // Retrieve existing logs from local storage
+      const existingLogs = JSON.parse(localStorage.getItem('commandLogs')) || [];
+      existingLogs.push(commandLog);
+
+      // Store updated logs back to local storage
+      localStorage.setItem('commandLogs', JSON.stringify(existingLogs));
+
+      // Optionally, you can trigger a method to refresh displayed logs
+      this.retrieveCommandLogs();
+    },
+    retrieveCommandLogs() {
+      const logs = JSON.parse(localStorage.getItem('commandLogs')) || []; // Retrieve logs from local storage
+      this.scheduleLogs = logs.slice(-5); // Keep only the last 5 logs
     },
     setMode(mode) {
       this.currentMode = mode;
       console.log('Switching to:', mode);
     },
     toggleDrive() {
-      this.driveStatus = !this.driveStatus;
-      console.log('Drive status:', this.driveStatus ? 'ON' : 'OFF');
+      this.driveStatus = !this.driveStatus; // Toggle the drive status
+      const currentDate = new Date().toISOString().split('T')[0]; // Get the current date in YYYY-MM-DD format
+      const commandType = 'Toggle Drive';
+      const state = this.driveStatus ? 'ON' : 'OFF'; // Determine the state based on the drive status
+      const status = 'Success'; // Assuming status is always success for this command
+
+      const commandLog = {
+        date: currentDate,
+        commandType: commandType,
+        state: state,
+        status: status
+      };
+
+      // Retrieve existing logs from local storage
+      const existingLogs = JSON.parse(localStorage.getItem('commandLogs')) || [];
+      existingLogs.push(commandLog); // Add the new log entry
+
+      // Store updated logs back to local storage
+      localStorage.setItem('commandLogs', JSON.stringify(existingLogs));
+
+      console.log('Drive status:', this.driveStatus ? 'ON' : 'OFF'); // Log the drive status
+
+      // Optionally, you can trigger a method to refresh displayed logs
+      this.retrieveCommandLogs();
     },
     getTemperatureStatus(temp) {
       if (temp <= 20) return 'Cool';
