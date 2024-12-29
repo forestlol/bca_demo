@@ -106,16 +106,6 @@
                                 </router-link>
                             </li>
                             <li>
-                                <router-link to="/automation-management/air-con" class="menu-link">
-                                    Air-Con
-                                </router-link>
-                            </li>
-                            <li>
-                                <router-link to="/automation-management/lighting" class="menu-link">
-                                    Lighting
-                                </router-link>
-                            </li>
-                            <li>
                                 <router-link to="/automation-management/fault-calling" class="menu-link">
                                     Fault Calling
                                 </router-link>

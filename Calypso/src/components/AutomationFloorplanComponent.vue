@@ -27,7 +27,8 @@
         <div class="tooltip-content">
           <p>Usage (Daily): {{ tooltip.dailyUsage }} kWh</p>
           <p>Status: {{ getStatus(tooltip.temperature) }}</p>
-          <p>Temperature: {{ tooltip.temperature }}°C</p>
+          <p>Current Temperature: {{ tooltip.temperature }}°C</p>
+          <p>Temperature Setpoint: {{ tooltip.setpoint }}°C</p>
         </div>
       </div>
     </div>
@@ -49,16 +50,16 @@ export default {
       startDateTime: yesterday.toISOString().slice(0, 16),
       endDateTime: now.toISOString().slice(0, 16),
       circles: [
-        { id: 1, x: 83, y: 62, title: "FCU 4", meterId: "24061901790001", dailyUsage: 0, temperature: null },
-        { id: 2, x: 83, y: 33, title: "FCU 5", meterId: "24060404690001", dailyUsage: 0, temperature: null },
-        { id: 3, x: 68.5, y: 62, title: "FCU 6", meterId: "24112209220002", dailyUsage: 0, temperature: null },
-        { id: 4, x: 68.5, y: 33, title: "FCU 7", meterId: "24060410030002", dailyUsage: 0, temperature: null },
-        { id: 5, x: 53, y: 62, title: "FCU 8", meterId: "24112209220006", dailyUsage: 0, temperature: null },
-        { id: 6, x: 53, y: 33, title: "FCU 9", meterId: "24060404690002", dailyUsage: 0, temperature: null },
-        { id: 7, x: 37, y: 62, title: "FCU 10", meterId: "24060410030003", dailyUsage: 0, temperature: null },
-        { id: 8, x: 37, y: 33, title: "FCU 11", meterId: "24060410030004", dailyUsage: 0, temperature: null },
-        { id: 9, x: 22, y: 62, title: "FCU 12", meterId: "24112209220003", dailyUsage: 0, temperature: null },
-        { id: 10, x: 22, y: 33, title: "FCU 13", meterId: "24112209220005", dailyUsage: 0, temperature: null },
+        { id: 1, x: 83, y: 62, title: "FCU 4", meterId: "24061901790001", dailyUsage: 0, temperature: null, setpoint: null },
+        { id: 2, x: 83, y: 33, title: "FCU 5", meterId: "24060404690001", dailyUsage: 0, temperature: null, setpoint: null },
+        { id: 3, x: 68.5, y: 62, title: "FCU 6", meterId: "24112209220002", dailyUsage: 0, temperature: null, setpoint: null },
+        { id: 4, x: 68.5, y: 33, title: "FCU 7", meterId: "24060410030002", dailyUsage: 0, temperature: null, setpoint: null },
+        { id: 5, x: 53, y: 62, title: "FCU 8", meterId: "24112209220006", dailyUsage: 0, temperature: null, setpoint: null },
+        { id: 6, x: 53, y: 33, title: "FCU 9", meterId: "24060404690002", dailyUsage: 0, temperature: null, setpoint: null },
+        { id: 7, x: 37, y: 62, title: "FCU 10", meterId: "24060410030003", dailyUsage: 0, temperature: null, setpoint: null },
+        { id: 8, x: 37, y: 33, title: "FCU 11", meterId: "24060410030004", dailyUsage: 0, temperature: null, setpoint: null },
+        { id: 9, x: 22, y: 62, title: "FCU 12", meterId: "24112209220003", dailyUsage: 0, temperature: null, setpoint: null },
+        { id: 10, x: 22, y: 33, title: "FCU 13", meterId: "24112209220005", dailyUsage: 0, temperature: null, setpoint: null },
       ],
       tooltip: {
         visible: false,
@@ -67,8 +68,10 @@ export default {
         title: "",
         dailyUsage: 0,
         temperature: null,
+        setpoint: null,
       },
       temperatureRefreshInterval: null,
+      temperatures: {},
     };
   },
   mounted() {
@@ -188,17 +191,11 @@ export default {
             'ngrok-skip-browser-warning': 'true'
           }
         });
-        
-        let data = response.data;
-        console.log('API Response:', data);
-        
-        // Ensure data is an array
-        if (!Array.isArray(data)) {
-          console.error('Expected array response from API, received:', typeof data);
-          return;
-        }
-        
-        // Map COM ports to FCU numbers
+
+        const data = response.data;
+        const tempValues = {};
+        const setpointValues = {};
+
         const portToFcu = {
           'COM5': 'FCU 4',
           'COM6': 'FCU 5',
@@ -208,44 +205,30 @@ export default {
           'COM10': 'FCU 9'
         };
 
-        // Store temperature values for duplication
-        const tempValues = {};
-
-        // First pass: get temperature values from original FCUs
         data.forEach(item => {
           if (item && item.data && Array.isArray(item.data) && portToFcu[item.port]) {
             const temperatureData = item.data.find(d => d.address === 8);
+            const setpointData = item.data.find(d => d.address === 1);
+            
             const temperature = temperatureData ? temperatureData.value : null;
+            const setpoint = setpointData ? setpointData.value : null;
+            
             tempValues[item.port] = temperature;
+            setpointValues[item.port] = setpoint;
           }
         });
 
-        // Map duplicated values
-        const duplicateMapping = {
-          'FCU 10': tempValues['COM6'], // Use COM6's value
-          'FCU 11': tempValues['COM7'], // Use COM7's value
-          'FCU 12': tempValues['COM8'], // Use COM8's value
-          'FCU 13': tempValues['COM9']  // Use COM9's value
-        };
-
-        // Update temperatures for original FCUs
-        this.circles.forEach(circle => {
-          if (portToFcu[Object.keys(portToFcu).find(key => portToFcu[key] === circle.title)]) {
-            // Original FCUs (4-9)
-            const port = Object.keys(portToFcu).find(key => portToFcu[key] === circle.title);
-            circle.temperature = tempValues[port];
-          } else if (duplicateMapping[circle.title]) {
-            // Duplicated FCUs (10-13)
-            circle.temperature = duplicateMapping[circle.title];
-          }
+        // Update the temperatures object with both current temp and setpoint
+        Object.keys(portToFcu).forEach(port => {
+          const fcu = portToFcu[port];
+          this.temperatures[fcu] = {
+            current: tempValues[port],
+            setpoint: setpointValues[port]
+          };
         });
 
       } catch (error) {
         console.error('Error fetching temperature data:', error);
-        if (error.response) {
-          console.error('Response data:', error.response.data);
-          console.error('Response status:', error.response.status);
-        }
       }
     },
     getRingColor(temperature) {
@@ -272,12 +255,16 @@ export default {
     },
     showValue(index, event) {
       const circle = this.circles[index];
-      this.tooltip.visible = true;
-      this.tooltip.x = event.clientX + 10;
-      this.tooltip.y = event.clientY + 10;
-      this.tooltip.title = circle.title;
-      this.tooltip.dailyUsage = circle.dailyUsage;
-      this.tooltip.temperature = circle.temperature;
+      const fcuData = this.temperatures[circle.title] || {};
+      this.tooltip = {
+        visible: true,
+        x: event.clientX + 10,
+        y: event.clientY + 10,
+        title: circle.title,
+        dailyUsage: circle.dailyUsage,
+        temperature: fcuData.current,
+        setpoint: fcuData.setpoint,
+      };
     },
     hideValue() {
       this.tooltip.visible = false;

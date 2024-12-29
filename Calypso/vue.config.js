@@ -2,6 +2,17 @@ const { defineConfig } = require('@vue/cli-service');
 
 module.exports = defineConfig({
   transpileDependencies: true,
+  devServer: {
+    proxy: {
+      '/api': {
+        target: 'http://ctweb.lumacloud.net',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/api': '/WebAPI'
+        }
+      }
+    }
+  },
   chainWebpack: (config) => {
     config.module
       .rule('xlsx')
@@ -9,8 +20,8 @@ module.exports = defineConfig({
       .use('file-loader')
       .loader('file-loader')
       .options({
-        name: '[name].[ext]', // Use the original file name and extension
-        outputPath: 'assets/', // Save the processed file in the `assets/` directory
+        name: '[name].[ext]',
+        outputPath: 'assets/',
       })
       .end();
   },

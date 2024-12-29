@@ -7,16 +7,16 @@
             <div class="filters-left">
                 <select v-model="selectedGateway" @change="fetchData">
                     <option value="all">All Gateways</option>
-                    <option v-for="gateway in gateways" :key="gateway" :value="gateway">
-                        {{ gateway }}
+                    <option v-for="gateway in gateways" :key="gateway.value" :value="gateway.value">
+                        {{ gateway.label }}
                     </option>
                 </select>
 
+
                 <select v-model="selectedType" @change="fetchData">
                     <option value="all">All Types</option>
-                    <option v-for="type in types" :key="type" :value="type">
-                        {{ type }}
-                    </option>
+                    <option value="FCU">VRF Aircon</option>
+                    <option value="Lighting">Lighting</option>
                 </select>
 
                 <select v-model="selectedMeterSN" @change="fetchData">
@@ -139,7 +139,7 @@ export default {
             chartType: "line", // Default to line chart
             showSettingsModal: false,
             gateways: [],
-            types: [],
+            types: ['FCU', 'Lighting'],
             devices: [],
             selectedGateway: "all",
             selectedType: "all",
@@ -197,12 +197,43 @@ export default {
             }
         },
         fetchComparisonData() {
-            const meterSNs = [
-                "24112209220004", "24060404690001", "24060410030004",
-                "24061901790001", "24060410030003", "24060410030002",
-                "24060404690002", "24112209220002", "24112209220003",
-                "24112209220006", "24112209220005"
-            ];
+            let meterSNs = [];
+            if (this.selectedType === 'FCU') {
+                meterSNs = [
+                    "24061901790001", // FCU 4
+                    "24060404690001", // FCU 5
+                    "24112209220002", // FCU 6
+                    "24060410030002", // FCU 7
+                    "24112209220006", // FCU 8
+                    "24060404690002", // FCU 9
+                    "24060410030003", // FCU 10
+                    "24060410030004", // FCU 11
+                    "24112209220003", // FCU 12
+                    "24112209220005"  // FCU 13
+                ];
+            } else if (this.selectedType === 'Lighting') {
+                meterSNs = ["24112209220004"]; // Only Overall Lighting
+            } else {
+                // If 'all' is selected, include all meters
+                meterSNs = [
+                    "24061901790001", // FCU 4
+                    "24060404690001", // FCU 5
+                    "24112209220002", // FCU 6
+                    "24060410030002", // FCU 7
+                    "24112209220006", // FCU 8
+                    "24060404690002", // FCU 9
+                    "24060410030003", // FCU 10
+                    "24060410030004", // FCU 11
+                    "24112209220003", // FCU 12
+                    "24112209220005", // FCU 13
+                    "24112209220004"  // Overall Lighting
+                ];
+            }
+
+            // If a specific meter is selected, only use that one
+            if (this.selectedMeterSN !== 'all') {
+                meterSNs = [this.selectedMeterSN];
+            }
 
             // Mapping of meterSN to their corresponding names
             const meterSNToName = {
@@ -226,6 +257,9 @@ export default {
 
             // Ensure the end date includes the entire day
             defaultEndDate.setHours(23, 59, 59, 999);
+
+            console.log("Default Start Date:", defaultStartDate);
+            console.log("Default End Date:", defaultEndDate);
 
             axios.get("https://geibms.com/message_history")
                 .then((response) => {
@@ -377,34 +411,26 @@ export default {
                 })
                 .catch((error) => console.error("Error fetching dropdown data:", error));
         },
-        // fetchData() {
-        //     const params = {
-        //         gateway: this.selectedGateway,
-        //         type: this.selectedType,
-        //         device: this.selectedDevice,
-        //         startDate: this.startDate,
-        //         endDate: this.endDate,
-        //         timeRange: this.selectedTimeRange,
-        //     };
-
-        //     axios
-        //         .get("http://157.230.240.216:5000/message_history", { params })
-        //         .then((response) => {
-        //             this.processChartData(response.data.message_history);
-        //         })
-        //         .catch((error) => console.error("Error fetching data:", error));
-        // },
-
         fetchData() {
             // If startDate or endDate is null, set defaults
             this.processChartData();
             this.computeBaselineData(); // Recompute baseline after data is fetched
+            this.fetchComparisonData();
         },
         populateDropdowns(data) {
-            this.gateways = [...new Set(data.map((entry) => entry.gwSN))];
+            // Create a set of gateways with label as "GE Canteen" and value as gwSN
+            this.gateways = [
+                { label: "GE Canteen", value: "24052003410033" }, // Map "GE Canteen" to the gwSN
+            ];
 
             // Modify types: replace "data" with "Individual Devices"
-            this.types = [...new Set(data.map((entry) => entry.type === "data" ? "Individual Devices" : entry.type))];
+            this.types = [
+                ...new Set(
+                    data.map((entry) =>
+                        entry.type === "data" ? "Individual Devices" : entry.type
+                    )
+                ),
+            ];
 
             this.devices = [...new Set(data.map((entry) => entry.device))];
 
@@ -412,11 +438,16 @@ export default {
             if (!this.types.includes("VRF AIRCON")) {
                 this.types.push("VRF AIRCON");
             }
+
+            // Ensure "LIGHTING" is included in the types
+            if (!this.types.includes("LIGHTING")) {
+                this.types.push("LIGHTING");
+            }
         },
         onDateChange() {
             // Call processChartData when the date range changes
             this.fetchComparisonData();
-            this.processChartData(this.startDate, this.endDate);            
+            this.processChartData(this.startDate, this.endDate);
         },
         computeBaselineData() {
             // Load the baseline settings for the new time range
@@ -450,8 +481,43 @@ export default {
             const labels = [];
             const data = [];
             // const meterSNs = ["24060410030004", "24061901790001", "24060410030003", "24060404690001", "24060410030002", "24060404690002"];
-            const meterSNs = ["24112209220004", "24060404690001", "24060410030004", "24061901790001", "24060410030003", "24060410030002", "24060404690002", "24112209220002", "24112209220003", "24112209220006", "24112209220005"];
-            // excluded 24112209220004, to be added again
+            let meterSNs = [];
+            if (this.selectedType === 'FCU') {
+                meterSNs = [
+                    "24061901790001", // FCU 4
+                    "24060404690001", // FCU 5
+                    "24112209220002", // FCU 6
+                    "24060410030002", // FCU 7
+                    "24112209220006", // FCU 8
+                    "24060404690002", // FCU 9
+                    "24060410030003", // FCU 10
+                    "24060410030004", // FCU 11
+                    "24112209220003", // FCU 12
+                    "24112209220005"  // FCU 13
+                ];
+            } else if (this.selectedType === 'Lighting') {
+                meterSNs = ["24112209220004"]; // Only Overall Lighting
+            } else {
+                // If 'all' is selected, include all meters
+                meterSNs = [
+                    "24061901790001", // FCU 4
+                    "24060404690001", // FCU 5
+                    "24112209220002", // FCU 6
+                    "24060410030002", // FCU 7
+                    "24112209220006", // FCU 8
+                    "24060404690002", // FCU 9
+                    "24060410030003", // FCU 10
+                    "24060410030004", // FCU 11
+                    "24112209220003", // FCU 12
+                    "24112209220005", // FCU 13
+                    "24112209220004"  // Overall Lighting
+                ];
+            }
+
+            // If a specific meter is selected, only use that one
+            if (this.selectedMeterSN !== 'all') {
+                meterSNs = [this.selectedMeterSN];
+            }
             // Set default start and end dates if not provided
             const now = new Date();
             const yesterday = new Date(now);
@@ -463,6 +529,7 @@ export default {
 
             console.log("Selected start date: " + startDate);
             console.log("Selected end date: " + endDate);
+
             if (!startDate || !endDate) {
                 if (this.selectedTimeRange === "5-min" || this.selectedTimeRange === "Hourly") {
                     defaultStartDate = new Date(yesterday); // Last 24 hours
