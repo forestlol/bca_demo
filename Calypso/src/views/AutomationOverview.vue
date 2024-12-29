@@ -89,6 +89,18 @@
             </div>
           </div>
           <div v-if="activeControlTab === 'control'" class="grid-container expanded-grid">
+            <div class="control-card full-width">
+              <div class="card-header">
+                <i class="fas fa-microchip"></i>
+                <span>FCU Selection</span>
+              </div>
+              <div class="card-content">
+                <select v-model="selectedFcu" @change="handleFcuChange" class="fcu-select">
+                  <option value="">Select FCU</option>
+                  <option v-for="fcu in fcuOptions" :key="fcu" :value="fcu">{{ fcu }}</option>
+                </select>
+              </div>
+            </div>
             <div class="control-card">
               <div class="card-header">
                 <i class="fas fa-thermometer-half"></i>
@@ -98,7 +110,7 @@
                 <div class="temperature-control">
                   <div class="temp-input-container">
                     <input type="number" v-model="setTemperature" min="16" max="30" step="1" class="temp-input"
-                      placeholder="22">
+                      placeholder="-">
                     <span class="temp-unit-label">°C</span>
                   </div>
                   <button @click="storeTemperatureCommand" class="set-btn">Set</button>
@@ -140,10 +152,10 @@
               <div class="card-content">
                 <div class="room-temp">
                   <div class="digital-display">
-                    <span class="temp-value">19</span>
+                    <span class="temp-value">{{ currentTemperature || '--' }}</span>
                     <span class="temp-unit">°C</span>
                   </div>
-                  <div class="temp-status">{{ getTemperatureStatus(19) }}</div>
+                  <div class="temp-status">{{ getTemperatureStatus(currentTemperature) }}</div>
                 </div>
               </div>
             </div>
@@ -228,10 +240,15 @@
 </template>
 
 <script>
+import axios from "axios";
+import CryptoJS from "crypto-js";
+import enc from "crypto-js/enc-utf16";
+import qs from 'qs';
 import FloorplanComponent from "@/components/AutomationFloorplanComponent.vue"; // Update path as needed
 import HeatmapComponent from "@/components/AutomationHeatmapComponent.vue";
 
 export default {
+  name: 'AutomationOverview',
   components: {
     FloorplanComponent,
     HeatmapComponent,
@@ -240,9 +257,9 @@ export default {
     return {
       activeTab: "deviceInfo",
       activeControlTab: "optimization",
-      setTemperature: 22,
+      setTemperature: "-",
       currentMode: 'Mode 1',
-      modes: ['Mode 1', 'Mode 2', 'Mode 3', 'Mode 4'],
+      modes: ['Heating', 'Humidity Reduction', 'Cooling', 'Auto'],
       driveStatus: false,
       // Random values for optimization metrics
       energySavings: 245,
@@ -256,14 +273,130 @@ export default {
         { date: "2024-12-03", commandType: "Mode Switch", state: "ON", status: "Success" },
         { date: "2024-12-03", commandType: "Turn Off", state: "OFF", status: "Unsuccessful" },
       ],
-      commandLogs: []
+      commandLogs: [],
+      selectedFcu: '',
+      currentTemperature: null,
+      fcuOptions: ['FCU 5', 'FCU 6', 'FCU 7', 'FCU 8', 'FCU 9', 'FCU 10', 'FCU 11', 'FCU 12', 'FCU 13'],
+      fcuToPort: {
+        'FCU 5': 'COM6',
+        'FCU 6': 'COM7',
+        'FCU 7': 'COM8',
+        'FCU 8': 'COM9',
+        'FCU 9': 'COM10',
+        'FCU 10': 'COM6', // Duplicated from FCU 6
+        'FCU 11': 'COM7', // Duplicated from FCU 7
+        'FCU 12': 'COM8', // Duplicated from FCU 8
+        'FCU 13': 'COM9'  // Duplicated from FCU 9
+      },
+      macId: null
     };
   },
   mounted() {
     this.scheduleLogs = []; // Clear existing logs
     this.retrieveCommandLogs(); // Retrieve logs from local storage
+    this.getOverviewList();
   },
   methods: {
+    async getOverviewList() {
+      try {
+        const host = "ctweb.lumacloud.net";
+        const account = "Gevernova";
+        const apiKey = "6TeRjDZ8";
+        const url = "/api/GetOverviewList";
+
+        // Generate timestamp (seconds since epoch)
+        const timestamp = Math.floor(Date.now() / 1000).toString();
+        
+        // Generate token according to documentation
+        const tokenString = `${host}&${account}&${apiKey}&${timestamp}`;
+        
+        // Match C# implementation exactly:
+        // 1. Convert to Unicode bytes (UTF-16LE)
+        // 2. Generate MD5 hash
+        // 3. Format bytes to match C# ToString("x")
+        const wordArray = enc.parse(tokenString);
+        const md5Hash = CryptoJS.MD5(wordArray);
+        const token = md5Hash.words.map(word => {
+          // Convert each word to bytes
+          const byte1 = (word >>> 24) & 0xff;
+          const byte2 = (word >>> 16) & 0xff;
+          const byte3 = (word >>> 8) & 0xff;
+          const byte4 = word & 0xff;
+          // Format each byte without padding
+          return [byte1, byte2, byte3, byte4]
+            .map(b => b.toString(16))
+            .join('');
+        }).join('');
+
+        const params = {
+          account,
+          token,
+          timestamp,
+          page: 1,
+          pageSize: 20,
+          MacID: "0",
+          DeviceID: "0",
+          keyword: ""
+        };
+
+        console.log("Token Generation:", {
+          host,
+          account,
+          apiKey,
+          timestamp,
+          tokenString,
+          token,
+          rawMD5: md5Hash.toString(),
+          tokenLength: token.length
+        });
+
+        console.log("Requesting GetOverviewList with params:", params);
+
+        // Use POST with form-urlencoded data
+        const response = await axios.post(url, qs.stringify(params), {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        });
+
+        if (response.data.code === 1) {
+          const deviceData = response.data.data;
+          console.log("Device Overview Data:", deviceData);
+          
+          // Process device data
+          if (Array.isArray(deviceData)) {
+            deviceData.forEach(device => {
+              console.log(`Device ${device.DeviceID}:`, {
+                alias: device.Alias,
+                model: device.Model,
+                macAddress: device.MacID,
+                state: {
+                  onOffState: device.State?.onoffstate,
+                  signalStrength: device.State?.signalstrength,
+                  dimmingLevels: {
+                    ch1: device.State?.level1,
+                    ch2: device.State?.level2,
+                    ch3: device.State?.level3,
+                    ch4: device.State?.level4
+                  }
+                }
+              });
+            });
+          }
+          
+          return deviceData;
+        } else {
+          console.error("API Error:", response.data.msg);
+          return null;
+        }
+      } catch (error) {
+        console.error("Error fetching overview list:", error.message);
+        if (error.response) {
+          console.error("Response Data:", error.response.data);
+        }
+        return null;
+      }
+    },
     storeTemperatureCommand() {
       const currentDate = new Date().toISOString().split('T')[0]; // Get the current date in YYYY-MM-DD format
       const commandType = 'Set temperature';
@@ -322,10 +455,64 @@ export default {
       this.retrieveCommandLogs();
     },
     getTemperatureStatus(temp) {
+      if (!temp) return 'No Data';
       if (temp <= 20) return 'Cool';
       if (temp <= 24) return 'Warm';
       return 'Hot';
     },
+    async handleFcuChange() {
+      if (this.selectedFcu) {
+        await this.fetchTemperatureData();
+      } else {
+        this.currentTemperature = null;
+      }
+    },
+    async fetchTemperatureData() {
+      try {
+        const response = await axios.get('https://helping-fish-current.ngrok-free.app/trigger_read_all', {
+          headers: {
+            'Accept': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          }
+        });
+
+        let data = response.data;
+        console.log('API Response:', data);
+
+        if (!Array.isArray(data)) {
+          console.error('Expected array response from API, received:', typeof data);
+          return;
+        }
+
+        // Get the COM port for the selected FCU
+        const selectedPort = this.fcuToPort[this.selectedFcu];
+
+        // Find the data for the selected FCU
+        const fcuData = data.find(item => item.port === selectedPort);
+
+        if (fcuData && fcuData.data && Array.isArray(fcuData.data)) {
+          // Get current temperature (address 8)
+          const currentTempData = fcuData.data.find(d => d.address === 8);
+          this.currentTemperature = currentTempData ? currentTempData.value : null;
+
+          // Get set temperature (address 1)
+          const setTempData = fcuData.data.find(d => d.address === 1);
+          this.setTemperature = setTempData ? setTempData.value : null;
+
+          // Log FCU and temperatures
+          console.log(`${this.selectedFcu}:
+            Current Temperature: ${this.currentTemperature}°C
+            Set Temperature: ${this.setTemperature}°C`);
+        }
+
+      } catch (error) {
+        console.error('Error fetching temperature data:', error);
+        if (error.response) {
+          console.error('Response data:', error.response.data);
+          console.error('Response status:', error.response.status);
+        }
+      }
+    }
   }
 };
 </script>
@@ -817,6 +1004,26 @@ export default {
 
 .text-primary {
   color: #2196F3;
+}
+
+.fcu-select {
+  width: 100%;
+  max-width: 300px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #333;
+}
+
+.fcu-select:focus {
+  outline: none;
+  border-color: #2196F3;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+}
+
+.control-card.full-width {
+  grid-column: 1 / -1;
 }
 
 @font-face {

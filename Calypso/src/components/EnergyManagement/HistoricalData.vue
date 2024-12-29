@@ -413,7 +413,7 @@ export default {
         },
         fetchData() {
             // If startDate or endDate is null, set defaults
-            this.processChartData();
+            this.processChartData(this.startDate, this.endDate);
             this.computeBaselineData(); // Recompute baseline after data is fetched
             this.fetchComparisonData();
         },
@@ -686,6 +686,7 @@ export default {
                     // Existing logic for Daily
                     if (this.selectedTimeRange === "Daily") {
                         const dailyData = {};
+
                         Object.keys(aggregatedData).forEach((key) => {
                             const time = new Date(key);
                             const dailyKey = `${time.getFullYear()}-${(time.getMonth() + 1)
@@ -760,7 +761,6 @@ export default {
     mounted() {
         this.fetchDropdownData();
         this.fetchData();
-        this.processChartData(this.startDate, this.endDate);
     },
     beforeUnmount() {
         if (this.chart) this.chart.destroy();
