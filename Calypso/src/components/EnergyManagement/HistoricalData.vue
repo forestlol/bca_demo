@@ -413,9 +413,9 @@ export default {
         },
         fetchData() {
             // If startDate or endDate is null, set defaults
-            this.processChartData(this.startDate, this.endDate);
             this.computeBaselineData(); // Recompute baseline after data is fetched
             this.fetchComparisonData();
+            this.processChartData(this.startDate, this.endDate);
         },
         populateDropdowns(data) {
             // Create a set of gateways with label as "GE Canteen" and value as gwSN
