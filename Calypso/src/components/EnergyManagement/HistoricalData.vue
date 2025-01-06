@@ -122,6 +122,7 @@
 
 <script>
 import axios from "axios";
+import * as XLSX from "xlsx";
 import PowerLineChart from "@/components/charts/PowerLineChart.vue";
 import PowerLineChart2 from "@/components/charts/PowerLineChart2.vue";
 
@@ -477,10 +478,39 @@ export default {
             // Close the modal
             this.toggleModal();
         },
-        processChartData(startDate = this.startDate, endDate = this.endDate) {
+        async fetchExcelData() {
+            // Path to the backup Excel file
+            const excelPath = '/BCAPowerMeter.xlsx';
+
+            try {
+                const response = await fetch(excelPath);
+                const arrayBuffer = await response.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: "array" });
+
+                // Debug: Check sheet names
+                console.log("Workbook Sheets:", workbook.SheetNames);
+
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+
+                const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                console.log("Parsed Excel Data:", jsonData);
+
+                const excelData = jsonData.slice(1).map((row) => ({
+                    datatime: row[0],
+                    meterSN: row[1],
+                    EPI: row[2],
+                }));
+
+                return excelData;
+            } catch (error) {
+                console.error("Error loading Excel data:", error);
+                return [];
+            }
+        },
+        async processChartData(startDate = this.startDate, endDate = this.endDate) {
             const labels = [];
             const data = [];
-            // const meterSNs = ["24060410030004", "24061901790001", "24060410030003", "24060404690001", "24060410030002", "24060404690002"];
             let meterSNs = [];
             if (this.selectedType === 'FCU') {
                 meterSNs = [
@@ -498,7 +528,6 @@ export default {
             } else if (this.selectedType === 'Lighting') {
                 meterSNs = ["24112209220004"]; // Only Overall Lighting
             } else {
-                // If 'all' is selected, include all meters
                 meterSNs = [
                     "24061901790001", // FCU 4
                     "24060404690001", // FCU 5
@@ -514,204 +543,110 @@ export default {
                 ];
             }
 
-            // If a specific meter is selected, only use that one
             if (this.selectedMeterSN !== 'all') {
                 meterSNs = [this.selectedMeterSN];
             }
-            // Set default start and end dates if not provided
+
             const now = new Date();
             const yesterday = new Date(now);
-            yesterday.setDate(now.getDate() - 1); // Last 24 hours
-            const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1); // Start of current month
+            yesterday.setDate(now.getDate() - 1);
+            const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
             let defaultStartDate;
-            let defaultEndDate = new Date(now); // Default endDate is 'now'
-
-            console.log("Selected start date: " + startDate);
-            console.log("Selected end date: " + endDate);
+            let defaultEndDate = new Date(now);
 
             if (!startDate || !endDate) {
                 if (this.selectedTimeRange === "5-min" || this.selectedTimeRange === "Hourly") {
-                    defaultStartDate = new Date(yesterday); // Last 24 hours
+                    defaultStartDate = new Date(yesterday);
                 } else if (this.selectedTimeRange === "Daily") {
                     defaultStartDate = new Date(now);
-                    defaultStartDate.setDate(now.getDate() - 4); // Last 4 days
+                    defaultStartDate.setDate(now.getDate() - 4);
                 } else if (this.selectedTimeRange === "Monthly") {
-                    defaultStartDate = firstDayOfMonth; // Start of the current month
+                    defaultStartDate = firstDayOfMonth;
                 }
             }
 
             const startDateObj = startDate ? new Date(startDate) : defaultStartDate;
             const endDateObj = endDate ? new Date(endDate) : defaultEndDate;
 
-            // Adjust endDateObj to include the end of the selected day
             if (endDate) {
                 endDateObj.setHours(23, 59, 59, 999);
             }
 
-            axios
-                .get("https://geibms.com/message_history")
-                .then((response) => {
-                    const rawData = response.data.message_history;
-                    // const filteredForSpecificMeter = rawData.filter(entry => entry.meterSN === "24112209220004");
-                    // console.log("Filtered Raw Data for 24112209220004:", filteredForSpecificMeter);
+            const fetchExcelData = async () => {
+                try {
+                    const response = await fetch('/BCAPowerMeter.xlsx');
+                    const arrayBuffer = await response.arrayBuffer();
+                    const workbook = XLSX.read(arrayBuffer, { type: 'binary' });
 
-                    // Filter data for the selected meterSN
-                    let filteredData = rawData.filter((entry) => {
-                        const entryDate = new Date(
-                            `${entry.datatime.slice(0, 4)}-${entry.datatime.slice(4, 6)}-${entry.datatime.slice(6, 8)}T${entry.datatime.slice(8, 10)}:${entry.datatime.slice(10, 12)}`
-                        );
+                    // Debugging: Check sheet names and content
+                    console.log('Workbook:', workbook);
 
-                        return (
-                            entryDate >= startDateObj &&
-                            entryDate <= endDateObj &&
-                            (this.selectedMeterSN === "all" || entry.meterSN === this.selectedMeterSN)
-                        );
-                    });
+                    const sheetName = workbook.SheetNames[0]; // Get the first sheet
+                    const sheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-                    if (filteredData.length === 0) {
-                        console.warn("No data available for the selected meterSN or date range.");
-                        this.chartLabels = [];
-                        this.chartData = [];
-                        this.updateChart();
-                        return;
-                    }
+                    console.log('Parsed Excel Data:', jsonData);
 
-                    const differencesBySensor = {};
-                    const aggregatedData = {};
+                    // Transform the data based on your column order
+                    const excelData = jsonData.slice(1).map((row) => ({
+                        datatime: row[2], // Datetime column
+                        meterSN: row[4],  // MeterSN column
+                        EPI: row[12],     // EPI column
+                    }));
 
-                    // Group data by meterSN and calculate differences
-                    meterSNs.forEach((meterSN) => {
-                        const sensorData = filteredData
-                            .filter((entry) => entry.meterSN === meterSN)
-                            .sort((a, b) => new Date(b.datatime) - new Date(a.datatime)) // Sort from latest to earliest
-                            .map((entry) => {
-                                const time = new Date(
-                                    `${entry.datatime.slice(0, 4)}-${entry.datatime.slice(4, 6)}-${entry.datatime.slice(6, 8)}T${entry.datatime.slice(8, 10)}:${entry.datatime.slice(10, 12)}`
-                                );
+                    console.log('Transformed Excel Data:', excelData);
 
-                                // Align time for consistent grouping
-                                const alignedTime = `${time.getFullYear()}-${(time.getMonth() + 1)
-                                    .toString()
-                                    .padStart(2, "0")}-${time
-                                        .getDate()
-                                        .toString()
-                                        .padStart(2, "0")} ${time
-                                            .getHours()
-                                            .toString()
-                                            .padStart(2, "0")}:${Math.floor(time.getMinutes() / 5) * 5
-                                                .toString()
-                                                .padStart(2, "0")}`;
+                    return excelData;
+                } catch (error) {
+                    console.error('Error loading Excel data:', error);
+                    return [];
+                }
+            };
 
-                                // Add transformation for meter 24112209220004
-                                // const value = meterSN === "24112209220004" ? (entry.EPI % 10) * 48 : entry.EPI;
 
-                                return { ...entry, alignedTime, value: entry.EPI };
-                            });
+            try {
+                const apiDataPromise = axios.get("https://geibms.com/message_history");
+                const excelDataPromise = fetchExcelData();
 
-                        differencesBySensor[meterSN] = sensorData.map((entry, index) => {
-                            let difference = 0;
+                const [apiResponse, excelData] = await Promise.all([apiDataPromise, excelDataPromise]);
+                const apiData = apiResponse.data.message_history;
 
-                            if (index === sensorData.length - 1) {
-                                // Compare the last data point with the previous one
-                                const previous = sensorData[index - 1];
-                                if (previous) {
-                                    difference = previous.value - entry.value;
-                                }
-                            } else {
-                                // Compare current entry with the next one
-                                const next = sensorData[index + 1];
-                                difference = entry.value - next.value;
-                            }
+                const combinedData = [...excelData, ...apiData];
 
-                            // Filter out differences beyond the threshold (-50 to 50)
-                            if (difference < -50 || difference > 50) {
-                                difference = 0; // Ignore outliers
-                            }
+                const filteredData = combinedData.filter((entry) => {
+                    const entryDate = new Date(
+                        `${entry.datatime.slice(0, 4)}-${entry.datatime.slice(4, 6)}-${entry.datatime.slice(6, 8)}T${entry.datatime.slice(8, 10)}:${entry.datatime.slice(10, 12)}`
+                    );
 
-                            // Apply transformation for meter "24112209220004" after calculating the difference
-                            if (meterSN === "24112209220004") {
-                                difference = (difference / 10) * 48;
-                            }
+                    return (
+                        entryDate >= startDateObj &&
+                        entryDate <= endDateObj &&
+                        (this.selectedMeterSN === "all" || entry.meterSN === this.selectedMeterSN)
+                    );
+                });
 
-                            return { time: entry.alignedTime, value: Math.abs(difference) };
-                        });
-                    });
+                if (filteredData.length === 0) {
+                    console.warn("No data available for the selected meterSN or date range.");
+                    this.chartLabels = [];
+                    this.chartData = [];
+                    this.updateChart();
+                    return;
+                }
 
-                    console.log("Differences by Sensor:", differencesBySensor);
+                const differencesBySensor = {};
+                const aggregatedData = {};
 
-                    // Aggregate data
-                    Object.keys(differencesBySensor).forEach((sensor) => {
-                        differencesBySensor[sensor].forEach((entry) => {
-                            const key = entry.time;
-                            if (!aggregatedData[key]) {
-                                aggregatedData[key] = 0;
-                            }
-                            aggregatedData[key] += entry.value;
-                        });
-                    });
+                meterSNs.forEach((meterSN) => {
+                    const sensorData = filteredData
+                        .filter((entry) => entry.meterSN === meterSN)
+                        .sort((a, b) => new Date(b.datatime) - new Date(a.datatime))
+                        .map((entry) => {
+                            const time = new Date(
+                                `${entry.datatime.slice(0, 4)}-${entry.datatime.slice(4, 6)}-${entry.datatime.slice(6, 8)}T${entry.datatime.slice(8, 10)}:${entry.datatime.slice(10, 12)}`
+                            );
 
-                    console.log("Aggregated Data:", aggregatedData);
-
-                    // Logic for Monthly
-                    if (this.selectedTimeRange === "Monthly") {
-                        const monthlyData = {};
-                        const sortedKeys = Object.keys(aggregatedData).sort(
-                            (a, b) => new Date(a) - new Date(b)
-                        );
-
-                        sortedKeys.forEach((key) => {
-                            const time = new Date(key.replace(" ", "T"));
-                            if (time >= firstDayOfMonth && time <= now) {
-                                const monthlyKey = `${time.getFullYear()}-${(time.getMonth() + 1)
-                                    .toString()
-                                    .padStart(2, "0")}`;
-
-                                if (!monthlyData[monthlyKey]) {
-                                    monthlyData[monthlyKey] = 0;
-                                }
-                                monthlyData[monthlyKey] += aggregatedData[key];
-                            }
-                        });
-
-                        console.log("Monthly Data:", monthlyData);
-
-                        // Since you have only one month's data, simply push the result
-                        Object.keys(monthlyData).forEach((key) => {
-                            labels.push(key);
-                            data.push(monthlyData[key]);
-                        });
-                    }
-
-                    // Existing logic for Daily
-                    if (this.selectedTimeRange === "Daily") {
-                        const dailyData = {};
-
-                        Object.keys(aggregatedData).forEach((key) => {
-                            const time = new Date(key);
-                            const dailyKey = `${time.getFullYear()}-${(time.getMonth() + 1)
-                                .toString()
-                                .padStart(2, "0")}-${time
-                                    .getDate()
-                                    .toString()
-                                    .padStart(2, "0")}`;
-                            if (!dailyData[dailyKey]) {
-                                dailyData[dailyKey] = 0;
-                            }
-                            dailyData[dailyKey] += aggregatedData[key];
-                        });
-                        Object.keys(dailyData).sort((a, b) => new Date(a) - new Date(b)).forEach((key) => {
-                            labels.push(key);
-                            data.push(dailyData[key]);
-                        });
-                    }
-
-                    // Logic for Hourly
-                    else if (this.selectedTimeRange === "Hourly") {
-                        const hourlyData = {};
-                        Object.keys(aggregatedData).forEach((key) => {
-                            const time = new Date(key);
-                            const hourKey = `${time.getFullYear()}-${(time.getMonth() + 1)
+                            const alignedTime = `${time.getFullYear()}-${(time.getMonth() + 1)
                                 .toString()
                                 .padStart(2, "0")}-${time
                                     .getDate()
@@ -719,39 +654,137 @@ export default {
                                     .padStart(2, "0")} ${time
                                         .getHours()
                                         .toString()
-                                        .padStart(2, "0")}:00`;
-                            if (!hourlyData[hourKey]) {
-                                hourlyData[hourKey] = 0;
+                                        .padStart(2, "0")}:${Math.floor(time.getMinutes() / 5) * 5
+                                            .toString()
+                                            .padStart(2, "0")}`;
+
+                            return { ...entry, alignedTime, value: entry.EPI };
+                        });
+
+                    differencesBySensor[meterSN] = sensorData.map((entry, index) => {
+                        let difference = 0;
+
+                        if (index === sensorData.length - 1) {
+                            const previous = sensorData[index - 1];
+                            if (previous) {
+                                difference = previous.value - entry.value;
                             }
-                            hourlyData[hourKey] += aggregatedData[key];
-                        });
-                        Object.keys(hourlyData).sort((a, b) => new Date(a) - new Date(b)).forEach((key) => {
-                            labels.push(key);
-                            data.push(hourlyData[key]);
-                        });
-                        console.log(data)
-                    }
+                        } else {
+                            const next = sensorData[index + 1];
+                            difference = entry.value - next.value;
+                        }
 
-                    // Logic for 5-Minute
-                    else if (this.selectedTimeRange === "5-min") {
-                        const fiveMinKeys = Object.keys(aggregatedData).sort(
-                            (a, b) => new Date(a) - new Date(b)
-                        );
-                        fiveMinKeys.forEach((key) => {
-                            labels.push(key);
-                            data.push(aggregatedData[key]);
-                        });
-                    }
+                        if (difference < -50 || difference > 50) {
+                            difference = 0;
+                        }
 
-                    this.chartLabels = labels;
-                    this.chartData = data;
+                        if (meterSN === "24112209220004") {
+                            difference = (difference / 10) * 48;
+                        }
 
-                    // Refresh the chart
-                    this.updateChart();
-                })
-                .catch((error) => {
-                    console.error("Error fetching data from API:", error);
+                        return { time: entry.alignedTime, value: Math.abs(difference) };
+                    });
                 });
+
+                Object.keys(differencesBySensor).forEach((sensor) => {
+                    differencesBySensor[sensor].forEach((entry) => {
+                        const key = entry.time;
+                        if (!aggregatedData[key]) {
+                            aggregatedData[key] = 0;
+                        }
+                        aggregatedData[key] += entry.value;
+                    });
+                });
+
+                if (this.selectedTimeRange === "Monthly") {
+                    const monthlyData = {};
+                    const sortedKeys = Object.keys(aggregatedData).sort(
+                        (a, b) => new Date(a) - new Date(b)
+                    );
+
+                    sortedKeys.forEach((key) => {
+                        const time = new Date(key.replace(" ", "T"));
+                        if (time >= firstDayOfMonth && time <= now) {
+                            const monthlyKey = `${time.getFullYear()}-${(time.getMonth() + 1)
+                                .toString()
+                                .padStart(2, "0")}`;
+
+                            if (!monthlyData[monthlyKey]) {
+                                monthlyData[monthlyKey] = 0;
+                            }
+                            monthlyData[monthlyKey] += aggregatedData[key];
+                        }
+                    });
+
+                    Object.keys(monthlyData).forEach((key) => {
+                        labels.push(key);
+                        data.push(monthlyData[key]);
+                    });
+                }
+
+                if (this.selectedTimeRange === "Daily") {
+                    const dailyData = {};
+
+                    Object.keys(aggregatedData).forEach((key) => {
+                        const time = new Date(key);
+                        const dailyKey = `${time.getFullYear()}-${(time.getMonth() + 1)
+                            .toString()
+                            .padStart(2, "0")}-${time
+                                .getDate()
+                                .toString()
+                                .padStart(2, "0")}`;
+                        if (!dailyData[dailyKey]) {
+                            dailyData[dailyKey] = 0;
+                        }
+                        dailyData[dailyKey] += aggregatedData[key];
+                    });
+                    Object.keys(dailyData).sort((a, b) => new Date(a) - new Date(b)).forEach((key) => {
+                        labels.push(key);
+                        data.push(dailyData[key]);
+                    });
+                }
+
+                else if (this.selectedTimeRange === "Hourly") {
+                    const hourlyData = {};
+                    Object.keys(aggregatedData).forEach((key) => {
+                        const time = new Date(key);
+                        const hourKey = `${time.getFullYear()}-${(time.getMonth() + 1)
+                            .toString()
+                            .padStart(2, "0")}-${time
+                                .getDate()
+                                .toString()
+                                .padStart(2, "0")} ${time
+                                    .getHours()
+                                    .toString()
+                                    .padStart(2, "0")}:00`;
+                        if (!hourlyData[hourKey]) {
+                            hourlyData[hourKey] = 0;
+                        }
+                        hourlyData[hourKey] += aggregatedData[key];
+                    });
+                    Object.keys(hourlyData).sort((a, b) => new Date(a) - new Date(b)).forEach((key) => {
+                        labels.push(key);
+                        data.push(hourlyData[key]);
+                    });
+                }
+
+                else if (this.selectedTimeRange === "5-min") {
+                    const fiveMinKeys = Object.keys(aggregatedData).sort(
+                        (a, b) => new Date(a) - new Date(b)
+                    );
+                    fiveMinKeys.forEach((key) => {
+                        labels.push(key);
+                        data.push(aggregatedData[key]);
+                    });
+                }
+
+                this.chartLabels = labels;
+                this.chartData = data;
+
+                this.updateChart();
+            } catch (error) {
+                console.error("Error processing chart data:", error);
+            }
         },
         updateChart() {
             // Explicitly update the chart component
