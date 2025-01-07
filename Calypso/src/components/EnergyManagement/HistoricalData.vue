@@ -478,36 +478,6 @@ export default {
             // Close the modal
             this.toggleModal();
         },
-        async fetchExcelData() {
-            // Path to the backup Excel file
-            const excelPath = '/BCAPowerMeter.xlsx';
-
-            try {
-                const response = await fetch(excelPath);
-                const arrayBuffer = await response.arrayBuffer();
-                const workbook = XLSX.read(arrayBuffer, { type: "array" });
-
-                // Debug: Check sheet names
-                console.log("Workbook Sheets:", workbook.SheetNames);
-
-                const sheetName = workbook.SheetNames[0];
-                const sheet = workbook.Sheets[sheetName];
-
-                const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                console.log("Parsed Excel Data:", jsonData);
-
-                const excelData = jsonData.slice(1).map((row) => ({
-                    datatime: row[0],
-                    meterSN: row[1],
-                    EPI: row[2],
-                }));
-
-                return excelData;
-            } catch (error) {
-                console.error("Error loading Excel data:", error);
-                return [];
-            }
-        },
         async processChartData(startDate = this.startDate, endDate = this.endDate) {
             const labels = [];
             const data = [];

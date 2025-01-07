@@ -242,7 +242,6 @@
 <script>
 import axios from "axios";
 import CryptoJS from "crypto-js";
-import enc from "crypto-js/enc-utf16";
 import qs from 'qs';
 import FloorplanComponent from "@/components/AutomationFloorplanComponent.vue"; // Update path as needed
 import HeatmapComponent from "@/components/AutomationHeatmapComponent.vue";
@@ -294,107 +293,70 @@ export default {
   mounted() {
     this.scheduleLogs = []; // Clear existing logs
     this.retrieveCommandLogs(); // Retrieve logs from local storage
-    this.getOverviewList();
+    this.getDeviceList();
   },
   methods: {
-    async getOverviewList() {
+    async generateToken(host, account, apiKey, timestamp) {
+      // Create the token string
+      const tokenString = `${host}&${account}&${apiKey}&${timestamp}`;
+
+      // Generate MD5 hash using UTF-16LE encoding
+      const wordArray = CryptoJS.enc.Utf16.parse(tokenString);
+      const token = CryptoJS.MD5(wordArray).toString(CryptoJS.enc.Hex);
+
+      return token;
+    },
+    async getDeviceList() {
       try {
+        // Configuration
+        const url = "http://ctweb.lumacloud.net/WebAPI/GetDeviceList";
         const host = "ctweb.lumacloud.net";
-        const account = "Gevernova";
-        const apiKey = "6TeRjDZ8";
-        const url = "/api/GetOverviewList";
+        const account = "Gevernova"; // Replace with your actual account name
+        const apiKey = "6TeRjDZ8"; // Replace with your actual API key
+        const macID = "0"; // Check all devices; replace if querying a specific device
 
         // Generate timestamp (seconds since epoch)
         const timestamp = Math.floor(Date.now() / 1000).toString();
-        
-        // Generate token according to documentation
-        const tokenString = `${host}&${account}&${apiKey}&${timestamp}`;
-        
-        // Match C# implementation exactly:
-        // 1. Convert to Unicode bytes (UTF-16LE)
-        // 2. Generate MD5 hash
-        // 3. Format bytes to match C# ToString("x")
-        const wordArray = enc.parse(tokenString);
-        const md5Hash = CryptoJS.MD5(wordArray);
-        const token = md5Hash.words.map(word => {
-          // Convert each word to bytes
-          const byte1 = (word >>> 24) & 0xff;
-          const byte2 = (word >>> 16) & 0xff;
-          const byte3 = (word >>> 8) & 0xff;
-          const byte4 = word & 0xff;
-          // Format each byte without padding
-          return [byte1, byte2, byte3, byte4]
-            .map(b => b.toString(16))
-            .join('');
-        }).join('');
 
+        // Generate token
+        const token = await this.generateToken(host, account, apiKey, timestamp);
+
+        // Construct request parameters
         const params = {
-          account,
-          token,
-          timestamp,
-          page: 1,
-          pageSize: 20,
-          MacID: "0",
-          DeviceID: "0",
-          keyword: ""
+          account: account,
+          MacID: macID,
+          token: token,
+          timestamp: timestamp,
         };
 
-        console.log("Token Generation:", {
-          host,
-          account,
-          apiKey,
-          timestamp,
-          tokenString,
-          token,
-          rawMD5: md5Hash.toString(),
-          tokenLength: token.length
-        });
+        // Debugging output
+        console.log("Request URL:", url);
+        console.log("Request Parameters:", params);
 
-        console.log("Requesting GetOverviewList with params:", params);
-
-        // Use POST with form-urlencoded data
+        // Send POST request
         const response = await axios.post(url, qs.stringify(params), {
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-          }
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
         });
 
-        if (response.data.code === 1) {
-          const deviceData = response.data.data;
-          console.log("Device Overview Data:", deviceData);
-          
-          // Process device data
-          if (Array.isArray(deviceData)) {
-            deviceData.forEach(device => {
-              console.log(`Device ${device.DeviceID}:`, {
-                alias: device.Alias,
-                model: device.Model,
-                macAddress: device.MacID,
-                state: {
-                  onOffState: device.State?.onoffstate,
-                  signalStrength: device.State?.signalstrength,
-                  dimmingLevels: {
-                    ch1: device.State?.level1,
-                    ch2: device.State?.level2,
-                    ch3: device.State?.level3,
-                    ch4: device.State?.level4
-                  }
-                }
-              });
-            });
+        // Handle response
+        if (response.data) {
+          console.log("Request Result:", response.data);
+          if (response.data.code === 1) {
+            // Process the returned data
+            console.log("Device List:", response.data.data);
+          } else {
+            console.error("API Error:", response.data.msg);
           }
-          
-          return deviceData;
         } else {
-          console.error("API Error:", response.data.msg);
-          return null;
+          console.error("Unexpected Response:", response);
         }
       } catch (error) {
-        console.error("Error fetching overview list:", error.message);
+        console.error("Error in getDeviceList:", error.message);
         if (error.response) {
           console.error("Response Data:", error.response.data);
         }
-        return null;
       }
     },
     storeTemperatureCommand() {
