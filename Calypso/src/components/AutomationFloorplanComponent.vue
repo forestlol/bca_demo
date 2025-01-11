@@ -8,30 +8,43 @@
     <!-- Floorplan Section -->
     <div class="heatmap-floorplan">
       <img src="@/assets/Floorplan.jpg" alt="Floorplan" class="floorplan-image" />
-      <div v-for="(circle, index) in circles" :key="circle.id" class="circle-container"
-        :style="{ 
-          top: circle.y + '%', 
-          left: circle.x + '%',
-        }"
-        @mouseenter="showValue(index, $event)"
-        @mouseleave="hideValue">
-        <div class="circle" :style="{ 
+
+      <!-- Static Circles -->
+      <div v-for="(circle, index) in circles" :key="'static-' + circle.id" class="circle-container" :style="{
+        top: circle.y + '%',
+        left: circle.x + '%',
+      }" @mouseenter="showValue(index, $event)" @mouseleave="hideValue">
+        <div class="circle" :style="{
           borderColor: getRingColor(circle.temperature),
           backgroundColor: getRingBackgroundColor(circle.temperature)
         }"></div>
       </div>
+
+      <!-- Dynamic Circles -->
+      <div v-for="(circle, index) in dynamicCircles" :key="'dynamic-' + circle.id" class="circle-container" :style="{
+        top: circle.y + '%',
+        left: circle.x + '%',
+      }" @mouseenter="showDynamicTooltip(index, $event)" @mouseleave="hideTooltip">
+        <div class="circle" :style="{ borderColor: circle.onoffstate === 'ON' ? '#00FF00' : '#FF0000' }"></div>
+      </div>
+
+      <!-- Tooltip -->
       <div v-if="tooltip.visible" class="value-tooltip" :style="{ top: `${tooltip.y}px`, left: `${tooltip.x}px` }">
         <div class="tooltip-header">
-          <span>Binding device: {{ tooltip.title }}</span>
+          <span>{{ tooltip.title }}</span>
         </div>
         <div class="tooltip-content">
-          <p>Usage (Daily): {{ tooltip.dailyUsage }} kWh</p>
-          <p>Status: {{ getStatus(tooltip.temperature) }}</p>
-          <p>Current Temperature: {{ tooltip.temperature }}°C</p>
-          <p>Temperature Setpoint: {{ tooltip.setpoint }}°C</p>
+          <p v-if="tooltip.dailyUsage !== undefined">Usage (Daily): {{ tooltip.dailyUsage }} kWh</p>
+          <p v-if="tooltip.onoffstate !== undefined">On/Off State: {{ tooltip.onoffstate }}</p>
+          <p v-if="tooltip.signalstrength !== undefined">Signal Strength: {{ tooltip.signalstrength }}</p>
+          <p v-if="tooltip.temperature !== undefined">Current Temperature: {{ tooltip.temperature }}°C</p>
+          <p v-if="tooltip.setpoint !== undefined">Temperature Setpoint: {{ tooltip.setpoint }}°C</p>
+          <p v-if="tooltip.sensorlightstate !== undefined">Light State: {{ tooltip.sensorlightstate }}</p>
+          <p v-if="tooltip.totalActivities !== undefined">Total Activities: {{ tooltip.totalActivities }}</p>
         </div>
       </div>
     </div>
+
   </div>
 </template>
 
@@ -72,12 +85,17 @@ export default {
       },
       temperatureRefreshInterval: null,
       temperatures: {},
+      devices: [], // To store the fetched device list
+      dynamicCircles: [], // Initialize dynamic circles
+      sensorlightstate: "",
     };
   },
   mounted() {
+    this.fetchDeviceList();
+    this.fetchActivities();
     this.fetchComparisonData(); // Trigger fetch on page load
     this.fetchTemperatureData(); // Fetch initial temperature data
-    
+
     // Set up interval to refresh temperature data every 30 seconds
     this.temperatureRefreshInterval = setInterval(() => {
       this.fetchTemperatureData();
@@ -90,6 +108,137 @@ export default {
     }
   },
   methods: {
+    async fetchDeviceList() {
+      const apiUrl = "https://b59a-111-65-75-129.ngrok-free.app/api/GetOverviewList";
+      const params = {
+        endpoint: "GetOverviewList",
+        page: 1,
+        pageSize: 20,
+        MacID: "0",
+        DeviceID: "0",
+        keyword: "",
+      };
+
+      try {
+        const response = await axios.post(apiUrl, params, {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.data.code === 1) {
+          console.log("Device List:", response.data.data);
+          this.devices = response.data.data;
+
+          // Fetch activities for all DeviceIDs
+          const activityRequests = this.devices.map((device) => this.fetchActivities(device.DeviceID));
+          const activities = await Promise.all(activityRequests);
+
+          // Map devices and activities to dynamicCircles
+          this.dynamicCircles = this.devices.map((device, index) => {
+            const sensorlightstate = parseInt(device.State?.sensorlightstate, 10); // Convert to integer
+            let sensorlightStateText = "Unknown";
+
+            // Map numeric sensor light state to text
+            switch (sensorlightstate) {
+              case 0:
+                sensorlightStateText = "Auto OFF";
+                break;
+              case 1:
+                sensorlightStateText = "Sensor Mode";
+                break;
+              case 2:
+                sensorlightStateText = "Busy Mode";
+                break;
+              case 3:
+                sensorlightStateText = "Silent Mode";
+                break;
+              default:
+                sensorlightStateText = "Unknown";
+            }
+
+            // Find activities for the current device
+            const deviceActivities = activities.find((activity) => activity.DeviceID === device.DeviceID) || {};
+
+            return {
+              id: `dynamic-${index + 1}`,
+              x: 15.5 + index * 15, // Spread circles horizontally
+              y: 50 + Math.floor(index / 5) * 20, // Stack circles vertically
+              title: device.Alias || `Zone ${index + 1}`,
+              onoffstate: device.State?.onoffstate === 0 ? "ON" : "OFF",
+              signalstrength: device.State?.signalstrength || "Unknown",
+              sensorlightstate: sensorlightStateText,
+              totalActivities: deviceActivities.totalActivities || 0,
+            };
+          });
+
+          console.log("Dynamic Circles with Activities:", this.dynamicCircles);
+        } else {
+          console.error("API Error:", response.data.msg || "Failed to fetch devices.");
+        }
+      } catch (err) {
+        console.error("An error occurred while fetching devices:", err);
+      }
+    },
+
+    async fetchActivities(DeviceID) {
+      const apiUrl = "https://b59a-111-65-75-129.ngrok-free.app/api/GetMinuteTrend";
+      const params = {
+        endpoint: "GetMinuteTrend",
+        page: 1,
+        pageSize: 20,
+        MacID: "0",
+        DeviceID: DeviceID,
+        keyword: "",
+      };
+
+      try {
+        const response = await axios.post(apiUrl, params, {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.data.code === 1) {
+          const data = response.data.data;
+
+          // Calculate total activities by summing up the lengths of xData arrays
+          const totalActivities =
+            (data?.xData1?.length || 0) +
+            (data?.xData2?.length || 0) +
+            (data?.xData3?.length || 0) +
+            (data?.xData4?.length || 0);
+
+          return {
+            DeviceID: DeviceID,
+            totalActivities: totalActivities,
+          };
+        } else {
+          console.error(`API Error for DeviceID ${DeviceID}:`, response.data.msg || "Failed to fetch activities.");
+          return { DeviceID: DeviceID, totalActivities: 0 };
+        }
+      } catch (err) {
+        console.error(`Error fetching activities for DeviceID ${DeviceID}:`, err);
+        return { DeviceID: DeviceID, totalActivities: 0 };
+      }
+    },
+
+    showDynamicTooltip(index, event) {
+      const circle = this.dynamicCircles[index];
+      this.tooltip = {
+        visible: true,
+        x: event.clientX + 10,
+        y: event.clientY + 10,
+        title: circle.title,
+        onoffstate: circle.onoffstate,
+        signalstrength: circle.signalstrength,
+        sensorlightstate: circle.sensorlightstate, // Add sensorlightstate to tooltip
+        totalActivities: circle.totalActivities, // Add total activities to tooltip
+      };
+    },
+    hideTooltip() {
+      this.tooltip.visible = false;
+    },
     fetchComparisonData() {
       const meterSNs = [
         "24112209220004", "24060404690001", "24060410030004",
@@ -185,7 +334,7 @@ export default {
     },
     async fetchTemperatureData() {
       try {
-        const response = await axios.get('https://helping-fish-current.ngrok-free.app/trigger_read_all', {
+        const response = await axios.get('https://6581-111-65-75-129.ngrok-free.app/trigger_read_all', {
           headers: {
             'Accept': 'application/json',
             'ngrok-skip-browser-warning': 'true'
@@ -209,10 +358,10 @@ export default {
           if (item && item.data && Array.isArray(item.data) && portToFcu[item.port]) {
             const temperatureData = item.data.find(d => d.address === 8);
             const setpointData = item.data.find(d => d.address === 1);
-            
+
             const temperature = temperatureData ? temperatureData.value : null;
             const setpoint = setpointData ? setpointData.value : null;
-            
+
             tempValues[item.port] = temperature;
             setpointValues[item.port] = setpoint;
           }
@@ -233,7 +382,7 @@ export default {
     },
     getRingColor(temperature) {
       if (temperature === null) return '#808080'; // Gray for no data
-      
+
       // Optimization status colors
       if (temperature <= 20) return '#00FF00'; // Green for Optimized
       if (temperature <= 23) return '#0000FF'; // Blue for Partially Optimized
@@ -241,7 +390,7 @@ export default {
     },
     getRingBackgroundColor(temperature) {
       if (temperature === null) return 'rgba(128, 128, 128, 0.2)'; // Gray for no data
-      
+
       // Optimization status colors with transparency
       if (temperature <= 20) return 'rgba(0, 255, 0, 0.2)'; // Green for Optimized
       if (temperature <= 23) return 'rgba(0, 0, 255, 0.2)'; // Blue for Partially Optimized

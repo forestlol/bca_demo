@@ -240,9 +240,7 @@
 </template>
 
 <script>
-import axios from "axios";
-import CryptoJS from "crypto-js";
-import qs from 'qs';
+import axios from 'axios';
 import FloorplanComponent from "@/components/AutomationFloorplanComponent.vue"; // Update path as needed
 import HeatmapComponent from "@/components/AutomationHeatmapComponent.vue";
 
@@ -254,11 +252,13 @@ export default {
   },
   data() {
     return {
+      devices: [], // To store the fetched device list
+      error: null, // To store error messages
       activeTab: "deviceInfo",
       activeControlTab: "optimization",
       setTemperature: "-",
       currentMode: 'Mode 1',
-      modes: ['Heating', 'Humidity Reduction', 'Cooling', 'Auto'],
+      modes: ['Heating', 'Humidity reduction', 'Cooling', 'Auto Operation'],
       driveStatus: false,
       // Random values for optimization metrics
       energySavings: 245,
@@ -275,8 +275,9 @@ export default {
       commandLogs: [],
       selectedFcu: '',
       currentTemperature: null,
-      fcuOptions: ['FCU 5', 'FCU 6', 'FCU 7', 'FCU 8', 'FCU 9', 'FCU 10', 'FCU 11', 'FCU 12', 'FCU 13'],
+      fcuOptions: ['FCU 4', 'FCU 5', 'FCU 6', 'FCU 7', 'FCU 8', 'FCU 9', 'FCU 10', 'FCU 11', 'FCU 12', 'FCU 13'],
       fcuToPort: {
+        'FCU 4': 'COM5',
         'FCU 5': 'COM6',
         'FCU 6': 'COM7',
         'FCU 7': 'COM8',
@@ -293,102 +294,150 @@ export default {
   mounted() {
     this.scheduleLogs = []; // Clear existing logs
     this.retrieveCommandLogs(); // Retrieve logs from local storage
-    this.getDeviceList();
   },
   methods: {
-    async generateToken(host, account, apiKey, timestamp) {
-      // Create the token string
-      const tokenString = `${host}&${account}&${apiKey}&${timestamp}`;
-
-      // Generate MD5 hash using UTF-16LE encoding
-      const wordArray = CryptoJS.enc.Utf16.parse(tokenString);
-      const token = CryptoJS.MD5(wordArray).toString(CryptoJS.enc.Hex);
-
-      return token;
-    },
-    async getDeviceList() {
-      try {
-        // Configuration
-        const url = "http://ctweb.lumacloud.net/WebAPI/GetDeviceList";
-        const host = "ctweb.lumacloud.net";
-        const account = "Gevernova"; // Replace with your actual account name
-        const apiKey = "6TeRjDZ8"; // Replace with your actual API key
-        const macID = "0"; // Check all devices; replace if querying a specific device
-
-        // Generate timestamp (seconds since epoch)
-        const timestamp = Math.floor(Date.now() / 1000).toString();
-
-        // Generate token
-        const token = await this.generateToken(host, account, apiKey, timestamp);
-
-        // Construct request parameters
-        const params = {
-          account: account,
-          MacID: macID,
-          token: token,
-          timestamp: timestamp,
-        };
-
-        // Debugging output
-        console.log("Request URL:", url);
-        console.log("Request Parameters:", params);
-
-        // Send POST request
-        const response = await axios.post(url, qs.stringify(params), {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-        });
-
-        // Handle response
-        if (response.data) {
-          console.log("Request Result:", response.data);
-          if (response.data.code === 1) {
-            // Process the returned data
-            console.log("Device List:", response.data.data);
-          } else {
-            console.error("API Error:", response.data.msg);
-          }
-        } else {
-          console.error("Unexpected Response:", response);
-        }
-      } catch (error) {
-        console.error("Error in getDeviceList:", error.message);
-        if (error.response) {
-          console.error("Response Data:", error.response.data);
-        }
-      }
-    },
     storeTemperatureCommand() {
-      const currentDate = new Date().toISOString().split('T')[0]; // Get the current date in YYYY-MM-DD format
-      const commandType = 'Set temperature';
-      const state = this.setTemperature; // Read temperature from input
-      const status = 'Success'; // Assuming status is always success for this command
+      // Ensure the selectedFcu and setTemperature are valid
+      if (!this.selectedFcu) {
+        console.error('No FCU selected.');
+        return;
+      }
+      if (!this.setTemperature || isNaN(this.setTemperature)) {
+        console.error('Invalid temperature setpoint.');
+        return;
+      }
 
-      const commandLog = {
-        date: currentDate,
-        commandType: commandType,
-        state: state + "°C", // Append °C to the state
-        status: status
+      const port = this.fcuToPort[this.selectedFcu]; // Get the port for the selected FCU
+      const value = parseInt(this.setTemperature, 10) * 10; // Ensure the value is an integer
+      const apiUrl = 'https://6581-111-65-75-129.ngrok-free.app/trigger_set_register';
+
+      const payload = {
+        port: port,
+        register_data: [
+          {
+            name: 'Temperature Setpoint',
+            value: value,
+          },
+        ],
       };
 
-      // Retrieve existing logs from local storage
-      const existingLogs = JSON.parse(localStorage.getItem('commandLogs')) || [];
-      existingLogs.push(commandLog);
+      // Make the POST request to the API
+      axios
+        .post(apiUrl, payload, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+        .then((response) => {
+          console.log('API Response:', response.data);
 
-      // Store updated logs back to local storage
-      localStorage.setItem('commandLogs', JSON.stringify(existingLogs));
+          // Log the command locally
+          const currentDate = new Date().toISOString().split('T')[0]; // Get the current date in YYYY-MM-DD format
+          const commandType = 'Set temperature';
+          const state = this.setTemperature; // Read temperature from input
+          const status = response.data.success ? 'Success' : 'Failure'; // Assume success from the API response
 
-      // Optionally, you can trigger a method to refresh displayed logs
-      this.retrieveCommandLogs();
+          const commandLog = {
+            date: currentDate,
+            commandType: commandType,
+            state: state + '°C', // Append °C to the state
+            status: status,
+          };
+
+          // Retrieve existing logs from local storage
+          const existingLogs = JSON.parse(localStorage.getItem('commandLogs')) || [];
+          existingLogs.push(commandLog);
+
+          // Store updated logs back to local storage
+          localStorage.setItem('commandLogs', JSON.stringify(existingLogs));
+
+          // Optionally, refresh displayed logs
+          this.retrieveCommandLogs();
+        })
+        .catch((error) => {
+          console.error('Error posting to API:', error);
+
+          // Log the failed command locally
+          const currentDate = new Date().toISOString().split('T')[0];
+          const commandType = 'Set temperature';
+          const state = this.setTemperature;
+          const status = 'Failure';
+
+          const commandLog = {
+            date: currentDate,
+            commandType: commandType,
+            state: state + '°C',
+            status: status,
+          };
+
+          const existingLogs = JSON.parse(localStorage.getItem('commandLogs')) || [];
+          existingLogs.push(commandLog);
+
+          localStorage.setItem('commandLogs', JSON.stringify(existingLogs));
+          this.retrieveCommandLogs();
+          this.fetchTemperatureData();
+        });
     },
     retrieveCommandLogs() {
       const logs = JSON.parse(localStorage.getItem('commandLogs')) || []; // Retrieve logs from local storage
       this.scheduleLogs = logs.slice(-5); // Keep only the last 5 logs
     },
     setMode(mode) {
-      this.currentMode = mode;
-      console.log('Switching to:', mode);
+      // Map mode to corresponding value
+      const modeMapping = {
+        Heating: 1,
+        "Humidity reduction": 2,
+        Cooling: 3,
+        "Auto Operation": 8,
+      };
+
+      const value = modeMapping[mode];
+      if (!value) {
+        console.error('Invalid mode selected:', mode);
+        return;
+      }
+
+      this.currentMode = mode; // Update the current mode for UI
+
+      const port = this.fcuToPort[this.selectedFcu]; // Get the port for the selected FCU
+      if (!port) {
+        console.error('No FCU selected or invalid port.');
+        return;
+      }
+
+      console.log("current value: " + value);
+      const payload = {
+        port: port,
+        register_data: [
+          {
+            name: 'Drive Mode',
+            value: value,
+          },
+        ],
+      };
+
+      const apiUrl = 'https://6581-111-65-75-129.ngrok-free.app/trigger_set_register';
+
+      // Post to the API
+      axios
+        .post(apiUrl, payload, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+        .then((response) => {
+          console.log('API Response:', response.data);
+
+          // Check if the response contains the expected success message
+          if (response.data.message && response.data.message.includes('Successfully wrote values')) {
+            console.log(`Mode ${mode} (${value}) successfully set.`);
+          } else {
+            console.error(`Failed to set mode ${mode} (${value}):`, response.data);
+          }
+        })
+        .catch((error) => {
+          console.error('Error posting to API:', error);
+        });
     },
     toggleDrive() {
       this.driveStatus = !this.driveStatus; // Toggle the drive status
@@ -397,11 +446,53 @@ export default {
       const state = this.driveStatus ? 'ON' : 'OFF'; // Determine the state based on the drive status
       const status = 'Success'; // Assuming status is always success for this command
 
+      // Prepare the API payload
+      const port = this.fcuToPort[this.selectedFcu]; // Get the port for the selected FCU
+      if (!port) {
+        console.error('No FCU selected or invalid port.');
+        return;
+      }
+
+      const value = this.driveStatus ? 1 : 0; // 1 for Drive ON, 0 for Drive OFF
+      const payload = {
+        port: port,
+        register_data: [
+          {
+            name: 'Drive On/Off',
+            value: value,
+          },
+        ],
+      };
+
+      const apiUrl = 'https://6581-111-65-75-129.ngrok-free.app/trigger_set_register';
+
+      // Make the API call
+      axios
+        .post(apiUrl, payload, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+        .then((response) => {
+          console.log('API Response:', response.data);
+
+          // Check if the response contains the expected success message
+          if (response.data.message && response.data.message.includes('Successfully wrote values')) {
+            console.log(`Drive status ${state} (${value}) successfully set.`);
+          } else {
+            console.error(`Failed to set drive status ${state} (${value}):`, response.data);
+          }
+        })
+        .catch((error) => {
+          console.error('Error posting to API:', error);
+        });
+
+      // Log the command locally
       const commandLog = {
         date: currentDate,
         commandType: commandType,
         state: state,
-        status: status
+        status: status,
       };
 
       // Retrieve existing logs from local storage
@@ -413,7 +504,7 @@ export default {
 
       console.log('Drive status:', this.driveStatus ? 'ON' : 'OFF'); // Log the drive status
 
-      // Optionally, you can trigger a method to refresh displayed logs
+      // Optionally, refresh displayed logs
       this.retrieveCommandLogs();
     },
     getTemperatureStatus(temp) {
@@ -431,7 +522,7 @@ export default {
     },
     async fetchTemperatureData() {
       try {
-        const response = await axios.get('https://helping-fish-current.ngrok-free.app/trigger_read_all', {
+        const response = await axios.get('https://6581-111-65-75-129.ngrok-free.app/trigger_read_all', {
           headers: {
             'Accept': 'application/json',
             'ngrok-skip-browser-warning': 'true'
@@ -461,12 +552,31 @@ export default {
           const setTempData = fcuData.data.find(d => d.address === 1);
           this.setTemperature = setTempData ? setTempData.value : null;
 
-          // Log FCU and temperatures
-          console.log(`${this.selectedFcu}:
-            Current Temperature: ${this.currentTemperature}°C
-            Set Temperature: ${this.setTemperature}°C`);
-        }
+          // Get drive mode (address 0)
+          const driveModeData = fcuData.data.find(d => d.address === 0);
+          const driveModeValue = driveModeData ? driveModeData.value : null;
 
+          // Map drive mode value to details
+          const driveModeDetails = driveModeData?.details || {};
+          const activeMode = driveModeDetails[driveModeValue] || 'Unknown';
+          this.currentMode = activeMode;
+
+          // Get Drive On/Off status (address 7)
+          const driveStatusData = fcuData.data.find(d => d.address === 7);
+          const driveStatusValue = driveStatusData ? driveStatusData.value : null;
+
+          // Map Drive On/Off value to details
+          const driveStatusDetails = driveStatusData?.details || {};
+          const driveStatus = driveStatusDetails[driveStatusValue] || 'Unknown';
+          this.driveStatus = driveStatusValue === 1; // Set boolean for UI
+
+          // Log all values
+          console.log(`${this.selectedFcu}:
+        Current Temperature: ${this.currentTemperature}°C
+        Set Temperature: ${this.setTemperature}°C
+        Drive Mode: ${activeMode}
+        Drive Status: ${driveStatus}`);
+        }
       } catch (error) {
         console.error('Error fetching temperature data:', error);
         if (error.response) {
