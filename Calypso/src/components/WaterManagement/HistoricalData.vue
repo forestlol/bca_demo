@@ -1,38 +1,31 @@
 <template>
     <div class="daily-chart-container">
-        <h2>Power Meter Readings</h2>
+        <h2>Water Meter Readings</h2>
 
         <!-- Filters Section -->
         <div class="filters">
             <div class="filters-left">
                 <select v-model="selectedGateway" @change="fetchData">
                     <option value="all">All Gateways</option>
-                    <option v-for="gateway in gateways" :key="gateway" :value="gateway">
-                        {{ gateway }}
+                    <option v-for="gateway in gateways" :key="gateway.value" :value="gateway.value">
+                        {{ gateway.label }}
                     </option>
                 </select>
 
+
                 <select v-model="selectedType" @change="fetchData">
                     <option value="all">All Types</option>
-                    <option v-for="type in types" :key="type" :value="type">
-                        {{ type }}
-                    </option>
+                    <option value="FCU">VRF Aircon</option>
+                    <option value="Lighting">Lighting</option>
                 </select>
 
                 <select v-model="selectedMeterSN" @change="fetchData">
                     <option value="all">All Meters</option>
-                    <option value="24061901790001">FCU 4</option>
-                    <option value="24060404690001">FCU 5</option>
-                    <option value="24112209220002">FCU 6</option>
-                    <option value="24060410030002">FCU 7</option>
-                    <option value="24112209220006">FCU 8</option>
-                    <option value="24060404690002">FCU 9</option>
-                    <option value="24060410030003">FCU 10</option>
-                    <option value="24060410030004">FCU 11</option>
-                    <option value="24112209220003">FCU 12</option>
-                    <option value="24112209220005">FCU 13</option>
-                    <option value="24112209220004">Overall Lighting</option>
+                    <option v-for="sheet in sheetNames" :key="sheet" :value="sheet">
+                        {{ sheet }}
+                    </option>
                 </select>
+
 
                 <input type="date" v-model="startDate" @change="onDateChange" placeholder="Choose Date" />
                 <input type="date" v-model="endDate" @change="onDateChange" placeholder="Choose Date" />
@@ -62,7 +55,7 @@
         <div class="chart-section">
             <div v-if="!isComparisonMode" class="chart-container">
                 <PowerLineChart ref="chartComponent" :data="chartData" :labels="chartLabels"
-                    :baselineData="baselineData" :type="chartType" />
+                    :baseline-data="baselineData" :show-baseline="showBaselineLine" :type="chartType" />
                 <!-- Toggle Buttons in the Top-Right Corner of the Chart -->
                 <div class="chart-toggle">
                     <button :class="{ active: chartType === 'line' }" @click="chartType = 'line'">Line</button>
@@ -122,7 +115,8 @@
 
 <script>
 import axios from "axios";
-import PowerLineChart from "@/components/charts/PowerLineChart.vue";
+import * as XLSX from "xlsx";
+import PowerLineChart from "@/components/charts/WaterLineChart.vue";
 import PowerLineChart2 from "@/components/charts/PowerLineChart2.vue";
 
 export default {
@@ -139,7 +133,8 @@ export default {
             chartType: "line", // Default to line chart
             showSettingsModal: false,
             gateways: [],
-            types: [],
+            sheetNames: [], // Array to store sheet names
+            types: ['FCU', 'Lighting'],
             devices: [],
             selectedGateway: "all",
             selectedType: "all",
@@ -159,8 +154,8 @@ export default {
                 "Daily": { value: null, visible: false }, // Default settings for Daily
                 "Monthly": { value: null, visible: false }, // Default settings for Monthly
             },
-            timeRanges: ["Hourly", "Daily", "Monthly"],
-            selectedTimeRange: "Hourly", // Default to 5-minute intervals
+            timeRanges: ["Daily", "Monthly"],
+            selectedTimeRange: "Daily", // Default to 5-minute intervals
             excelData: [], // To store the parsed Excel data
         };
     },
@@ -168,7 +163,7 @@ export default {
         selectedTimeRange() {
             if (this.isComparisonMode) {
                 // If comparison mode is on, fetch comparison data
-                this.fetchComparisonData();
+                // this.fetchComparisonData();
                 this.computeBaselineData(); // Recompute the baseline for the new time range
             } else {
                 // Otherwise, process normal chart data
@@ -188,187 +183,216 @@ export default {
             return new Date(year, month, day, hours, minutes, seconds);
         },
         // Toggle Comparison Mode
-        toggleComparisonMode() {
-            this.isComparisonMode = !this.isComparisonMode;
-            if (this.isComparisonMode) {
-                this.fetchComparisonData(); // Fetch and render comparison data
-            } else {
-                this.fetchData(); // Fetch and render normal data
-            }
-        },
-        fetchComparisonData() {
-            // const meterSNs = [
-            //     "24112209220004", "24060404690001", "24060410030004",
-            //     "24061901790001", "24060410030003", "24060410030002",
-            //     "24060404690002", "24112209220002", "24112209220003",
-            //     "24112209220006", "24112209220005"
-            // ];
+        // toggleComparisonMode() {
+        //     this.isComparisonMode = !this.isComparisonMode;
+        //     if (this.isComparisonMode) {
+        //         this.fetchComparisonData(); // Fetch and render comparison data
+        //     } else {
+        //         this.fetchData(); // Fetch and render normal data
+        //     }
+        // },
+        // fetchComparisonData() {
+        //     let meterSNs = [];
+        //     if (this.selectedType === 'FCU') {
+        //         meterSNs = [
+        //             "24061901790001", // FCU 4
+        //             "24060404690001", // FCU 5
+        //             "24112209220002", // FCU 6
+        //             "24060410030002", // FCU 7
+        //             "24112209220006", // FCU 8
+        //             "24060404690002", // FCU 9
+        //             "24060410030003", // FCU 10
+        //             "24060410030004", // FCU 11
+        //             "24112209220003", // FCU 12
+        //             "24112209220005"  // FCU 13
+        //         ];
+        //     } else if (this.selectedType === 'Lighting') {
+        //         meterSNs = ["24112209220004"]; // Only Overall Lighting
+        //     } else {
+        //         // If 'all' is selected, include all meters
+        //         meterSNs = [
+        //             "24061901790001", // FCU 4
+        //             "24060404690001", // FCU 5
+        //             "24112209220002", // FCU 6
+        //             "24060410030002", // FCU 7
+        //             "24112209220006", // FCU 8
+        //             "24060404690002", // FCU 9
+        //             "24060410030003", // FCU 10
+        //             "24060410030004", // FCU 11
+        //             "24112209220003", // FCU 12
+        //             "24112209220005", // FCU 13
+        //             "24112209220004"  // Overall Lighting
+        //         ];
+        //     }
 
-            // // Mapping of meterSN to their corresponding names
-            // const meterSNToName = {
-            //     "24061901790001": "FCU 4",
-            //     "24060404690001": "FCU 5",
-            //     "24112209220002": "FCU 6",
-            //     "24060410030002": "FCU 7",
-            //     "24112209220006": "FCU 8",
-            //     "24060404690002": "FCU 9",
-            //     "24060410030003": "FCU 10",
-            //     "24060410030004": "FCU 11",
-            //     "24112209220003": "FCU 12",
-            //     "24112209220005": "FCU 13",
-            //     "24112209220004": "Overall Lighting"
-            // };
+        //     // If a specific meter is selected, only use that one
+        //     if (this.selectedMeterSN !== 'all') {
+        //         meterSNs = [this.selectedMeterSN];
+        //     }
 
-            // const now = new Date();
-            // let startTime = new Date(now);
-            // const endTime = new Date(now);
+        //     // Mapping of meterSN to their corresponding names
+        //     const meterSNToName = {
+        //         "24061901790001": "FCU 4",
+        //         "24060404690001": "FCU 5",
+        //         "24112209220002": "FCU 6",
+        //         "24060410030002": "FCU 7",
+        //         "24112209220006": "FCU 8",
+        //         "24060404690002": "FCU 9",
+        //         "24060410030003": "FCU 10",
+        //         "24060410030004": "FCU 11",
+        //         "24112209220003": "FCU 12",
+        //         "24112209220005": "FCU 13",
+        //         "24112209220004": "Overall Lighting"
+        //     };
 
-            // // Adjust startTime based on selectedTimeRange
-            // if (this.selectedTimeRange === "Hourly") {
-            //     startTime.setDate(now.getDate() - 1); // Last 24 hours
-            // } else if (this.selectedTimeRange === "Daily") {
-            //     startTime.setDate(now.getDate() - 3); // Past 4 days inclusive of today
-            //     startTime.setHours(0, 0, 0, 0); // Set to the beginning of the day
-            //     endTime.setHours(23, 59, 59, 999); // Set to the end of today
-            // }
+        //     // Handle default startDate and endDate if not provided
+        //     const now = new Date();
+        //     const defaultStartDate = this.startDate ? new Date(this.startDate) : new Date(now.setDate(now.getDate() - 3)); // Default to 3 days ago
+        //     const defaultEndDate = this.endDate ? new Date(this.endDate) : new Date(); // Default to today
 
-            // axios.get("https://geibms.com/message_history")
-            //     .then((response) => {
-            //         const rawData = response.data.message_history;
-            //         const aggregatedDataBySensor = {};
+        //     // Ensure the end date includes the entire day
+        //     defaultEndDate.setHours(23, 59, 59, 999);
 
-            //         meterSNs.forEach((meterSN) => {
-            //             const sensorData = rawData
-            //                 .filter((entry) => {
-            //                     const entryTime = this.parseCustomDatetime(entry.datatime);
+        //     console.log("Default Start Date:", defaultStartDate);
+        //     console.log("Default End Date:", defaultEndDate);
 
-            //                     // Ensure entry is within the specified time range
-            //                     return (
-            //                         entry.meterSN === meterSN &&
-            //                         entryTime >= startTime &&
-            //                         entryTime <= endTime
-            //                     );
-            //                 })
-            //                 .map((entry) => {
-            //                     const entryTime = this.parseCustomDatetime(entry.datatime);
+        //     axios.get("https://geibms.com/message_history")
+        //         .then((response) => {
+        //             const rawData = response.data.message_history;
+        //             const aggregatedDataBySensor = {};
 
-            //                     // Align times based on selected time range
-            //                     if (this.selectedTimeRange === "Hourly") {
-            //                         entryTime.setMinutes(0, 0, 0);
-            //                     } else if (this.selectedTimeRange === "Daily") {
-            //                         entryTime.setHours(0, 0, 0, 0);
-            //                     }
+        //             meterSNs.forEach((meterSN) => {
+        //                 const sensorData = rawData
+        //                     .filter((entry) => {
+        //                         const entryTime = this.parseCustomDatetime(entry.datatime);
 
-            //                     return {
-            //                         time: entryTime.toISOString(),
-            //                         value: entry.EPI,
-            //                     };
-            //                 })
-            //                 .sort((a, b) => new Date(a.time) - new Date(b.time));
+        //                         // Filter by meterSN and ensure the entry is within the specified date range
+        //                         return (
+        //                             entry.meterSN === meterSN &&
+        //                             entryTime >= defaultStartDate &&
+        //                             entryTime <= defaultEndDate
+        //                         );
+        //                     })
+        //                     .map((entry) => {
+        //                         const entryTime = this.parseCustomDatetime(entry.datatime);
 
-            //             const aggregatedData = {};
-            //             sensorData.forEach((entry, index, array) => {
-            //                 if (index === 0) return;
+        //                         // Align times based on selected time range
+        //                         if (this.selectedTimeRange === "Hourly") {
+        //                             entryTime.setMinutes(0, 0, 0);
+        //                         } else if (this.selectedTimeRange === "Daily") {
+        //                             entryTime.setHours(0, 0, 0, 0);
+        //                         }
 
-            //                 const previous = array[index - 1];
-            //                 let difference = entry.value - previous.value;
+        //                         return {
+        //                             time: entryTime.toISOString(),
+        //                             value: entry.EPI,
+        //                         };
+        //                     })
+        //                     .sort((a, b) => new Date(a.time) - new Date(b.time));
 
-            //                 if (difference < -50 || difference > 50) {
-            //                     difference = 0;
-            //                 }
+        //                 const aggregatedData = {};
+        //                 sensorData.forEach((entry, index, array) => {
+        //                     if (index === 0) return;
 
-            //                 if (meterSN === "24112209220004") {
-            //                     difference = (difference / 10) * 48;
-            //                 }
+        //                     const previous = array[index - 1];
+        //                     let difference = entry.value - previous.value;
 
-            //                 const timeKey = entry.time;
-            //                 if (!aggregatedData[timeKey]) {
-            //                     aggregatedData[timeKey] = 0;
-            //                 }
-            //                 aggregatedData[timeKey] += Math.abs(difference);
-            //             });
+        //                     if (difference < -50 || difference > 50) {
+        //                         difference = 0;
+        //                     }
 
-            //             aggregatedDataBySensor[meterSN] = aggregatedData;
-            //         });
+        //                     if (meterSN === "24112209220004") {
+        //                         difference = (difference / 10) * 48;
+        //                     }
 
-            //         const chartData = [];
-            //         const uniqueLabels = new Set();
+        //                     const timeKey = entry.time;
+        //                     if (!aggregatedData[timeKey]) {
+        //                         aggregatedData[timeKey] = 0;
+        //                     }
+        //                     aggregatedData[timeKey] += Math.abs(difference);
+        //                 });
 
-            //         Object.entries(aggregatedDataBySensor).forEach(([sensor, aggregatedData]) => {
-            //             const dataPoints = Object.entries(aggregatedData).map(([time, value]) => {
-            //                 uniqueLabels.add(time);
-            //                 return { time, value };
-            //             });
+        //                 aggregatedDataBySensor[meterSN] = aggregatedData;
+        //             });
 
-            //             const name = meterSNToName[sensor] || sensor; // Replace meterSN with name
-            //             chartData.push({
-            //                 label: name,
-            //                 data: dataPoints.map((point) => point.value),
-            //             });
-            //         });
+        //             const chartData = [];
+        //             const uniqueLabels = new Set();
 
-            //         const sortedLabels = Array.from(uniqueLabels)
-            //             .sort((a, b) => new Date(a) - new Date(b))
-            //             .map((label) => {
-            //                 const date = new Date(label);
-            //                 if (this.selectedTimeRange === "Hourly") {
-            //                     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-            //                 } else if (this.selectedTimeRange === "Daily") {
-            //                     return date.toLocaleDateString();
-            //                 }
-            //                 return label;
-            //             });
+        //             Object.entries(aggregatedDataBySensor).forEach(([sensor, aggregatedData]) => {
+        //                 const dataPoints = Object.entries(aggregatedData).map(([time, value]) => {
+        //                     uniqueLabels.add(time);
+        //                     return { time, value };
+        //                 });
 
-            //         this.comparisonChartLabels = sortedLabels;
-            //         this.comparisonChartData = chartData;
+        //                 const name = meterSNToName[sensor] || sensor; // Replace meterSN with name
+        //                 chartData.push({
+        //                     label: name,
+        //                     data: dataPoints.map((point) => point.value),
+        //                 });
+        //             });
 
-            //         console.log("Comparison Chart Data with Names:", this.comparisonChartData);
-            //         console.log("Comparison Chart Labels:", this.comparisonChartLabels);
+        //             const sortedLabels = Array.from(uniqueLabels)
+        //                 .sort((a, b) => new Date(a) - new Date(b))
+        //                 .map((label) => {
+        //                     const date = new Date(label);
+        //                     if (this.selectedTimeRange === "Hourly") {
+        //                         return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        //                     } else if (this.selectedTimeRange === "Daily") {
+        //                         return date.toLocaleDateString();
+        //                     }
+        //                     return label;
+        //                 });
 
-            //         this.renderComparisonChart();
-            //     })
-            //     .catch((error) => console.error("Error fetching comparison data:", error));
-        },
+        //             this.comparisonChartLabels = sortedLabels;
+        //             this.comparisonChartData = chartData;
 
-        renderComparisonChart() {
-            if (!this.comparisonChartData || this.comparisonChartData.length === 0) {
-                console.error("Comparison Chart Data is empty.");
-                return;
-            }
+        //             console.log("Comparison Chart Data with Names:", this.comparisonChartData);
+        //             console.log("Comparison Chart Labels:", this.comparisonChartLabels);
 
-            // Mapping of meterSN to human-readable names
-            const meterSNToName = {
-                "24061901790001": "FCU 4",
-                "24060404690001": "FCU 5",
-                "24112209220002": "FCU 6",
-                "24060410030002": "FCU 7",
-                "24112209220006": "FCU 8",
-                "24060404690002": "FCU 9",
-                "24060410030003": "FCU 10",
-                "24060410030004": "FCU 11",
-                "24112209220003": "FCU 12",
-                "24112209220005": "FCU 13",
-                "24112209220004": "Overall Lighting"
-            };
+        //             this.renderComparisonChart();
+        //         })
+        //         .catch((error) => console.error("Error fetching comparison data:", error));
+        // },
 
-            // Transform dataset labels from meterSN to names
-            const datasets = this.comparisonChartData.map((dataset) => ({
-                label: meterSNToName[dataset.label] || dataset.label, // Replace meterSN with name if available
-                data: this.comparisonChartLabels.map((label, index) => dataset.data[index] || 0), // Fill missing values with 0
-                borderColor: "#" + Math.floor(Math.random() * 16777215).toString(16), // Random color
-                backgroundColor: "rgba(0, 0, 0, 0)", // Transparent
-                fill: false,
-                tension: 0.4,
-                borderWidth: 2,
-                pointRadius: 3,
-            }));
+        // renderComparisonChart() {
+        //     if (!this.comparisonChartData || this.comparisonChartData.length === 0) {
+        //         console.error("Comparison Chart Data is empty.");
+        //         return;
+        //     }
 
-            this.chartLabels = this.comparisonChartLabels;
-            this.chartData = datasets;
+        //     // Mapping of meterSN to human-readable names
+        //     const meterSNToName = {
+        //         "24061901790001": "FCU 4",
+        //         "24060404690001": "FCU 5",
+        //         "24112209220002": "FCU 6",
+        //         "24060410030002": "FCU 7",
+        //         "24112209220006": "FCU 8",
+        //         "24060404690002": "FCU 9",
+        //         "24060410030003": "FCU 10",
+        //         "24060410030004": "FCU 11",
+        //         "24112209220003": "FCU 12",
+        //         "24112209220005": "FCU 13",
+        //         "24112209220004": "Overall Lighting"
+        //     };
 
-            // Render chart
-            this.$refs.chartComponent.renderChart(this.chartLabels, this.chartData);
-        },
+        //     // Transform dataset labels from meterSN to names
+        //     const datasets = this.comparisonChartData.map((dataset) => ({
+        //         label: meterSNToName[dataset.label] || dataset.label, // Replace meterSN with name if available
+        //         data: this.comparisonChartLabels.map((label, index) => dataset.data[index] || 0), // Fill missing values with 0
+        //         borderColor: "#" + Math.floor(Math.random() * 16777215).toString(16), // Random color
+        //         backgroundColor: "rgba(0, 0, 0, 0)", // Transparent
+        //         fill: false,
+        //         tension: 0.4,
+        //         borderWidth: 2,
+        //         pointRadius: 3,
+        //     }));
+
+        //     this.chartLabels = this.comparisonChartLabels;
+        //     this.chartData = datasets;
+
+        //     // Render chart
+        //     this.$refs.chartComponent.renderChart(this.chartLabels, this.chartData);
+        // },
 
         toggleModal() {
             this.showSettingsModal = !this.showSettingsModal;
@@ -379,37 +403,45 @@ export default {
                 .then((response) => {
                     const data = response.data.message_history;
                     this.populateDropdowns(data);
+
+                    // Fetch the sheet names
+                    this.fetchSheetNames();
                 })
                 .catch((error) => console.error("Error fetching dropdown data:", error));
         },
-        // fetchData() {
-        //     const params = {
-        //         gateway: this.selectedGateway,
-        //         type: this.selectedType,
-        //         device: this.selectedDevice,
-        //         startDate: this.startDate,
-        //         endDate: this.endDate,
-        //         timeRange: this.selectedTimeRange,
-        //     };
+        fetchSheetNames() {
+            fetch('/WaterMeterData.xlsx') // Adjust path to your Excel file
+                .then((response) => response.arrayBuffer())
+                .then((arrayBuffer) => {
+                    const workbook = XLSX.read(arrayBuffer, { type: 'binary' });
 
-        //     axios
-        //         .get("http://157.230.240.216:5000/message_history", { params })
-        //         .then((response) => {
-        //             this.processChartData(response.data.message_history);
-        //         })
-        //         .catch((error) => console.error("Error fetching data:", error));
-        // },
+                    // Extract sheet names and set them in the data property
+                    this.sheetNames = workbook.SheetNames;
+                    console.log("Sheet Names:", this.sheetNames); // Debugging
+                })
+                .catch((error) => console.error('Error fetching sheet names:', error));
+        },
 
         fetchData() {
             // If startDate or endDate is null, set defaults
-            this.processChartData();
             this.computeBaselineData(); // Recompute baseline after data is fetched
+            // this.fetchComparisonData();
+            this.processChartData(this.startDate, this.endDate);
         },
         populateDropdowns(data) {
-            this.gateways = [...new Set(data.map((entry) => entry.gwSN))];
+            // Create a set of gateways with label as "GE Canteen" and value as gwSN
+            this.gateways = [
+                { label: "GE Canteen", value: "24052003410033" }, // Map "GE Canteen" to the gwSN
+            ];
 
             // Modify types: replace "data" with "Individual Devices"
-            this.types = [...new Set(data.map((entry) => entry.type === "data" ? "Individual Devices" : entry.type))];
+            this.types = [
+                ...new Set(
+                    data.map((entry) =>
+                        entry.type === "data" ? "Individual Devices" : entry.type
+                    )
+                ),
+            ];
 
             this.devices = [...new Set(data.map((entry) => entry.device))];
 
@@ -417,19 +449,26 @@ export default {
             if (!this.types.includes("VRF AIRCON")) {
                 this.types.push("VRF AIRCON");
             }
+
+            // Ensure "LIGHTING" is included in the types
+            if (!this.types.includes("LIGHTING")) {
+                this.types.push("LIGHTING");
+            }
         },
         onDateChange() {
             // Call processChartData when the date range changes
+            // this.fetchComparisonData();
             this.processChartData(this.startDate, this.endDate);
         },
         computeBaselineData() {
-            // Load the baseline settings for the new time range
+            // Load the baseline settings for the selected time range
             const settings = this.baselineSettings[this.selectedTimeRange] || { value: null, visible: false };
             this.baselinePower = settings.value;
             this.showBaselineLine = settings.visible;
 
-            // Compute the baseline data only if the baseline is set to visible
+            // Compute the baseline data only if the baseline is set to visible and has a value
             if (this.showBaselineLine && this.baselinePower !== null) {
+                // Generate an array with the same length as `chartLabels`, filled with `baselinePower`
                 this.baselineData = this.chartLabels.map(() => this.baselinePower);
             } else {
                 this.baselineData = [];
@@ -450,254 +489,143 @@ export default {
             // Close the modal
             this.toggleModal();
         },
-        processChartData() {
-            // const labels = [];
-            // const data = [];
-            // // const meterSNs = ["24060410030004", "24061901790001", "24060410030003", "24060404690001", "24060410030002", "24060404690002"];
-            // const meterSNs = ["24112209220004", "24060404690001", "24060410030004", "24061901790001", "24060410030003", "24060410030002", "24060404690002", "24112209220002", "24112209220003", "24112209220006", "24112209220005"];
-            // // excluded 24112209220004, to be added again
-            // // Set default start and end dates if not provided
-            // const now = new Date();
-            // const yesterday = new Date(now);
-            // yesterday.setDate(now.getDate() - 1); // Last 24 hours
-            // const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1); // Start of current month
+        async processChartData(startDate = this.startDate, endDate = this.endDate) {
+            console.log("Start Date:", startDate, "End Date:", endDate);
+            const labels = [];
+            const data = [];
+            const startDateObj = startDate ? new Date(startDate) : new Date();
+            const endDateObj = endDate ? new Date(endDate) : new Date();
 
-            // let defaultStartDate;
-            // let defaultEndDate = new Date(now); // Default endDate is 'now'
+            if (endDate) {
+                endDateObj.setHours(23, 59, 59, 999);
+            }
 
-            // console.log("Selected start date: " + startDate);
-            // console.log("Selected end date: " + endDate);
-            // if (!startDate || !endDate) {
-            //     if (this.selectedTimeRange === "5-min" || this.selectedTimeRange === "Hourly") {
-            //         defaultStartDate = new Date(yesterday); // Last 24 hours
-            //     } else if (this.selectedTimeRange === "Daily") {
-            //         defaultStartDate = new Date(now);
-            //         defaultStartDate.setDate(now.getDate() - 4); // Last 4 days
-            //     } else if (this.selectedTimeRange === "Monthly") {
-            //         defaultStartDate = firstDayOfMonth; // Start of the current month
-            //     }
-            // }
+            console.log("Parsed Start Date:", startDateObj, "Parsed End Date:", endDateObj);
 
-            // const startDateObj = startDate ? new Date(startDate) : defaultStartDate;
-            // const endDateObj = endDate ? new Date(endDate) : defaultEndDate;
+            const fetchExcelData = async () => {
+                try {
+                    const response = await fetch('/WaterMeterData.xlsx'); // Adjust path as needed
+                    const arrayBuffer = await response.arrayBuffer();
+                    const workbook = XLSX.read(arrayBuffer, { type: 'binary' });
 
-            // // Adjust endDateObj to include the end of the selected day
-            // if (endDate) {
-            //     endDateObj.setHours(23, 59, 59, 999);
-            // }
+                    // Initialize an array to hold the data
+                    let selectedData = [];
 
-            // axios
-            //     .get("https://geibms.com/message_history")
-            //     .then((response) => {
-            //         const rawData = response.data.message_history;
-            //         // const filteredForSpecificMeter = rawData.filter(entry => entry.meterSN === "24112209220004");
-            //         // console.log("Filtered Raw Data for 24112209220004:", filteredForSpecificMeter);
+                    // If "All Meters" is selected, process all sheets
+                    if (this.selectedMeterSN === "all") {
+                        workbook.SheetNames.forEach((sheetName) => {
+                            const sheet = workbook.Sheets[sheetName];
+                            const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-            //         // Filter data for the selected meterSN
-            //         let filteredData = rawData.filter((entry) => {
-            //             const entryDate = new Date(
-            //                 `${entry.datatime.slice(0, 4)}-${entry.datatime.slice(4, 6)}-${entry.datatime.slice(6, 8)}T${entry.datatime.slice(8, 10)}:${entry.datatime.slice(10, 12)}`
-            //             );
+                            // Process the current sheet and add it to the combined data
+                            const sheetData = jsonData.slice(1).map((row) => ({
+                                IMEI: row[0],
+                                DeviceName: row[1],
+                                SerialNo: row[2],
+                                MeterReading: parseFloat(row[16]) || 0,
+                                ReadingMeterTime: new Date(row[10]) || null,
+                            }));
 
-            //             return (
-            //                 entryDate >= startDateObj &&
-            //                 entryDate <= endDateObj &&
-            //                 (this.selectedMeterSN === "all" || entry.meterSN === this.selectedMeterSN)
-            //             );
-            //         });
+                            selectedData = selectedData.concat(sheetData);
+                        });
+                    } else {
+                        // If a specific meter is selected, process only the relevant sheet
+                        const sheet = workbook.Sheets[this.selectedMeterSN];
+                        if (sheet) {
+                            const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-            //         if (filteredData.length === 0) {
-            //             console.warn("No data available for the selected meterSN or date range.");
-            //             this.chartLabels = [];
-            //             this.chartData = [];
-            //             this.updateChart();
-            //             return;
-            //         }
+                            selectedData = jsonData.slice(1).map((row) => ({
+                                IMEI: row[0],
+                                DeviceName: row[1],
+                                SerialNo: row[2],
+                                MeterReading: parseFloat(row[16]) || 0,
+                                ReadingMeterTime: new Date(row[10]) || null,
+                            }));
+                        } else {
+                            console.warn(`Sheet for meter ${this.selectedMeterSN} not found.`);
+                        }
+                    }
 
-            //         const differencesBySensor = {};
-            //         const aggregatedData = {};
+                    console.log("Selected Data:", selectedData);
+                    return selectedData;
+                } catch (error) {
+                    console.error('Error loading Excel data:', error);
+                    return [];
+                }
+            };
 
-            //         // Group data by meterSN and calculate differences
-            //         meterSNs.forEach((meterSN) => {
-            //             const sensorData = filteredData
-            //                 .filter((entry) => entry.meterSN === meterSN)
-            //                 .sort((a, b) => new Date(b.datatime) - new Date(a.datatime)) // Sort from latest to earliest
-            //                 .map((entry) => {
-            //                     const time = new Date(
-            //                         `${entry.datatime.slice(0, 4)}-${entry.datatime.slice(4, 6)}-${entry.datatime.slice(6, 8)}T${entry.datatime.slice(8, 10)}:${entry.datatime.slice(10, 12)}`
-            //                     );
+            try {
+                const excelData = await fetchExcelData();
+                console.log("Fetched Excel Data:", excelData);
 
-            //                     // Align time for consistent grouping
-            //                     const alignedTime = `${time.getFullYear()}-${(time.getMonth() + 1)
-            //                         .toString()
-            //                         .padStart(2, "0")}-${time
-            //                             .getDate()
-            //                             .toString()
-            //                             .padStart(2, "0")} ${time
-            //                                 .getHours()
-            //                                 .toString()
-            //                                 .padStart(2, "0")}:${Math.floor(time.getMinutes() / 5) * 5
-            //                                     .toString()
-            //                                     .padStart(2, "0")}`;
+                // Filter data by date range
+                const filteredData = excelData.filter((entry) => {
+                    const readingTime = entry.ReadingMeterTime;
 
-            //                     // Add transformation for meter 24112209220004
-            //                     // const value = meterSN === "24112209220004" ? (entry.EPI % 10) * 48 : entry.EPI;
+                    return (
+                        readingTime &&
+                        readingTime >= startDateObj &&
+                        readingTime <= endDateObj
+                    );
+                });
 
-            //                     return { ...entry, alignedTime, value: entry.EPI };
-            //                 });
+                console.log("Filtered Data:", filteredData);
 
-            //             differencesBySensor[meterSN] = sensorData.map((entry, index) => {
-            //                 let difference = 0;
+                if (filteredData.length === 0) {
+                    console.warn("No data available for the selected meter or date range.");
+                    this.chartLabels = [];
+                    this.chartData = [];
+                    this.updateChart();
+                    return;
+                }
 
-            //                 if (index === sensorData.length - 1) {
-            //                     // Compare the last data point with the previous one
-            //                     const previous = sensorData[index - 1];
-            //                     if (previous) {
-            //                         difference = previous.value - entry.value;
-            //                     }
-            //                 } else {
-            //                     // Compare current entry with the next one
-            //                     const next = sensorData[index + 1];
-            //                     difference = entry.value - next.value;
-            //                 }
+                // Aggregate data by date
+                const aggregatedData = {};
+                filteredData.forEach((entry) => {
+                    let dateKey;
 
-            //                 // Filter out differences beyond the threshold (-50 to 50)
-            //                 if (difference < -50 || difference > 50) {
-            //                     difference = 0; // Ignore outliers
-            //                 }
+                    if (this.selectedTimeRange === "Monthly") {
+                        const time = entry.ReadingMeterTime;
+                        dateKey = `${time.getFullYear()}-${(time.getMonth() + 1).toString().padStart(2, "0")}`;
+                    } else {
+                        dateKey = entry.ReadingMeterTime.toISOString().split("T")[0];
+                    }
 
-            //                 // Apply transformation for meter "24112209220004" after calculating the difference
-            //                 if (meterSN === "24112209220004") {
-            //                     difference = (difference / 10) * 48;
-            //                 }
+                    if (!aggregatedData[dateKey]) {
+                        aggregatedData[dateKey] = 0;
+                    }
+                    aggregatedData[dateKey] += entry.MeterReading;
+                });
 
-            //                 return { time: entry.alignedTime, value: Math.abs(difference) };
-            //             });
-            //         });
+                console.log("Aggregated Data:", aggregatedData);
 
-            //         console.log("Differences by Sensor:", differencesBySensor);
+                Object.keys(aggregatedData)
+                    .sort((a, b) => new Date(a) - new Date(b))
+                    .forEach((key) => {
+                        labels.push(key);
+                        data.push(aggregatedData[key]);
+                    });
 
-            //         // Aggregate data
-            //         Object.keys(differencesBySensor).forEach((sensor) => {
-            //             differencesBySensor[sensor].forEach((entry) => {
-            //                 const key = entry.time;
-            //                 if (!aggregatedData[key]) {
-            //                     aggregatedData[key] = 0;
-            //                 }
-            //                 aggregatedData[key] += entry.value;
-            //             });
-            //         });
+                console.log("Labels after aggregation:", labels);
+                console.log("Data after aggregation:", data);
 
-            //         console.log("Aggregated Data:", aggregatedData);
+                this.chartLabels = [...labels];
+                this.chartData = [...data];
 
-            //         // Logic for Monthly
-            //         if (this.selectedTimeRange === "Monthly") {
-            //             const monthlyData = {};
-            //             const sortedKeys = Object.keys(aggregatedData).sort(
-            //                 (a, b) => new Date(a) - new Date(b)
-            //             );
-
-            //             sortedKeys.forEach((key) => {
-            //                 const time = new Date(key.replace(" ", "T"));
-            //                 if (time >= firstDayOfMonth && time <= now) {
-            //                     const monthlyKey = `${time.getFullYear()}-${(time.getMonth() + 1)
-            //                         .toString()
-            //                         .padStart(2, "0")}`;
-
-            //                     if (!monthlyData[monthlyKey]) {
-            //                         monthlyData[monthlyKey] = 0;
-            //                     }
-            //                     monthlyData[monthlyKey] += aggregatedData[key];
-            //                 }
-            //             });
-
-            //             console.log("Monthly Data:", monthlyData);
-
-            //             // Since you have only one month's data, simply push the result
-            //             Object.keys(monthlyData).forEach((key) => {
-            //                 labels.push(key);
-            //                 data.push(monthlyData[key]);
-            //             });
-            //         }
-
-            //         // Existing logic for Daily
-            //         if (this.selectedTimeRange === "Daily") {
-            //             const dailyData = {};
-            //             Object.keys(aggregatedData).forEach((key) => {
-            //                 const time = new Date(key);
-            //                 const dailyKey = `${time.getFullYear()}-${(time.getMonth() + 1)
-            //                     .toString()
-            //                     .padStart(2, "0")}-${time
-            //                         .getDate()
-            //                         .toString()
-            //                         .padStart(2, "0")}`;
-            //                 if (!dailyData[dailyKey]) {
-            //                     dailyData[dailyKey] = 0;
-            //                 }
-            //                 dailyData[dailyKey] += aggregatedData[key];
-            //             });
-            //             Object.keys(dailyData).sort((a, b) => new Date(a) - new Date(b)).forEach((key) => {
-            //                 labels.push(key);
-            //                 data.push(dailyData[key]);
-            //             });
-            //         }
-
-            //         // Logic for Hourly
-            //         else if (this.selectedTimeRange === "Hourly") {
-            //             const hourlyData = {};
-            //             Object.keys(aggregatedData).forEach((key) => {
-            //                 const time = new Date(key);
-            //                 const hourKey = `${time.getFullYear()}-${(time.getMonth() + 1)
-            //                     .toString()
-            //                     .padStart(2, "0")}-${time
-            //                         .getDate()
-            //                         .toString()
-            //                         .padStart(2, "0")} ${time
-            //                             .getHours()
-            //                             .toString()
-            //                             .padStart(2, "0")}:00`;
-            //                 if (!hourlyData[hourKey]) {
-            //                     hourlyData[hourKey] = 0;
-            //                 }
-            //                 hourlyData[hourKey] += aggregatedData[key];
-            //             });
-            //             Object.keys(hourlyData).sort((a, b) => new Date(a) - new Date(b)).forEach((key) => {
-            //                 labels.push(key);
-            //                 data.push(hourlyData[key]);
-            //             });
-            //             console.log(data)
-            //         }
-
-            //         // Logic for 5-Minute
-            //         else if (this.selectedTimeRange === "5-min") {
-            //             const fiveMinKeys = Object.keys(aggregatedData).sort(
-            //                 (a, b) => new Date(a) - new Date(b)
-            //             );
-            //             fiveMinKeys.forEach((key) => {
-            //                 labels.push(key);
-            //                 data.push(aggregatedData[key]);
-            //             });
-            //         }
-
-            //         this.chartLabels = labels;
-            //         this.chartData = data;
-
-            //         // Refresh the chart
-            //         this.updateChart();
-            //     })
-            //     .catch((error) => {
-            //         console.error("Error fetching data from API:", error);
-            //     });
+                this.updateChart();
+            } catch (error) {
+                console.error("Error processing chart data:", error);
+            }
         },
         updateChart() {
-            // Explicitly update the chart component
-            this.$refs.chartComponent.renderChart();
-        },
+            if (this.$refs.chartComponent) {
+                this.$refs.chartComponent.renderChart();
+            }
+        }
     },
     mounted() {
         this.fetchDropdownData();
         this.fetchData();
-        this.processChartData(this.startDate, this.endDate);
     },
     beforeUnmount() {
         if (this.chart) this.chart.destroy();

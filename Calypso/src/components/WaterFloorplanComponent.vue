@@ -27,13 +27,12 @@
 
     <!-- Title Bar -->
     <div class="heatmap-title-bar">
-      Heatmap Distribution Chart - <span class="subtitle">{{ selectedFloor }}</span>
+      Water Meter Pin Location - <span class="subtitle">{{ selectedFloor }}</span>
     </div>
 
     <!-- Floorplan Section -->
     <div class="heatmap-floorplan">
-      <!-- <img src="" alt="Floorplan" class="floorplan-image" /> -->
-      -
+      <img :src="waterMapImage" alt="Floorplan" class="floorplan-image" />
     </div>
   </div>
 </template>
@@ -71,6 +70,11 @@ export default {
         dailyUsage: 0,
       },
     };
+  },
+  computed: {
+    waterMapImage() {
+      return require("@/assets/WaterMap.png");
+    },
   },
 };
 
