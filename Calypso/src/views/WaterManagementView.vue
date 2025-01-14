@@ -50,7 +50,10 @@
             <!-- Middle Row -->
             <div class="middle-row">
                 <div class="card floorplan">
-                    <h3>Select Location</h3>
+                    <div class="floorplan-header">
+                        <h3>Select Location</h3>
+                        <button class="add-button" @click="navigateToFloorplan()">+</button>
+                    </div>
                     <select v-model="selectedImage" @change="changeFloorplan">
                         <option v-for="option in floorplanOptions" :key="option.value" :value="option.value">
                             {{ option.label }}
@@ -58,12 +61,13 @@
                     </select>
                     <img :src="require(`@/assets/${selectedImage}`)" :alt="selectedImage" class="floorplan-img" />
                 </div>
+
                 <div class="card power-usage-hourly">
                     <h3>Water Meter Usage (m³) for the Day</h3>
                     <div class="chart-wrapper">
                         <PowerHourlyChart :data="hourlyChartData" />
                     </div>
-                    <button class="add-button" @click="navigateToPage('/energy-management/historical-data')">+</button>
+                    <button class="add-button" @click="navigateToChart()">+</button>
                 </div>
             </div>
 
@@ -74,7 +78,7 @@
                     <div class="chart-wrapper">
                         <PowerDailyChart :data="dailyChartData" />
                     </div>
-                    <button class="add-button" @click="navigateToPage('/energy-management/historical-data')">+</button>
+                    <button class="add-button" @click="navigateToChart()">+</button>
                 </div>
             </div>
         </div>
@@ -111,6 +115,12 @@ export default {
         };
     },
     methods: {
+        navigateToFloorplan() {
+            this.$router.push("/water-management/historical-data"); // Replace with your actual route
+        },
+        navigateToChart() {
+            this.$router.push("/water-management/historical-data"); // Replace with your actual route
+        },
         async loadWaterMeterData() {
             try {
                 const response = await fetch("/WaterMeterData.xlsx"); // Adjust path
@@ -434,4 +444,23 @@ select {
     margin: 0 8px;
     color: #6b7280;
 }
+
+.view-more-button {
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.view-more-button:hover {
+  background-color: #1d4ed8;
+}
+
 </style>
