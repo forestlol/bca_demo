@@ -545,7 +545,7 @@ export default {
 
             const fetchExcelData = async () => {
                 try {
-                    const response = await fetch('/BCAPowerMeter.xlsx');
+                    const response = await fetch('/BCAPowerMeter3.xlsx');
                     const arrayBuffer = await response.arrayBuffer();
                     const workbook = XLSX.read(arrayBuffer, { type: 'binary' });
 
@@ -560,9 +560,9 @@ export default {
 
                     // Transform the data based on your column order
                     const excelData = jsonData.slice(1).map((row) => ({
-                        datatime: row[2], // Datetime column
-                        meterSN: row[4],  // MeterSN column
-                        EPI: row[12],     // EPI column
+                        datatime: row[0], // Datetime column
+                        meterSN: row[2],  // MeterSN column
+                        EPI: row[3],     // EPI column
                     }));
 
                     console.log('Transformed Excel Data:', excelData);

@@ -17,22 +17,22 @@
             </div>
             <!-- Top Cards -->
             <div class="top-cards">
-                <DashboardCard color="#625a9b" title="Power Usage Today" :value="powerUsageToday"
-                    description="Power Today" link="/energy-management/historical-data">
+                <DashboardCard color="#625a9b" title="Water Consumption (m³)" :value="waterConsumptionToday"
+                    description="Total consumption today">
                     <template #icon>
-                        <i class="fas fa-bolt"></i>
+                        <i class="fas fa-tint"></i>
                     </template>
                 </DashboardCard>
 
-                <DashboardCard color="#42abb7" title="Power Usage This Month" :value="totalPowerUsageThisMonth"
-                    description="Power Usage This Month" link="/energy-management/historical-data">
+                <DashboardCard color="#42abb7" title="Water Consumption (m³)" :value="waterConsumptionMonthly"
+                    description="Total consumption this month">
                     <template #icon>
                         <i class="fas fa-calendar-alt"></i>
                     </template>
                 </DashboardCard>
 
-                <DashboardCard color="#00484a" title="Device Power Usage (Highest)" :value="highestDevicePowerUsage"
-                    description="Highest Power Consumption">
+                <DashboardCard color="#00484a" title="Highest Consumption Device" :value="highestConsumptionValue"
+                    :description="`Device: ${highestConsumptionDevice}`">
                     <template #icon>
                         <i class="fas fa-plug"></i>
                     </template>
@@ -40,9 +40,7 @@
 
 
 
-
-                <DashboardCard color="#245d75" title="Power Efficiency" value="Normal"
-                    description="Valid Until 30 June 2025">
+                <DashboardCard color="#245d75" title="Devices All Operational" value="Normal">
                     <template #icon>
                         <i class="fas fa-leaf"></i>
                     </template>
@@ -61,7 +59,7 @@
                     <img :src="require(`@/assets/${selectedImage}`)" :alt="selectedImage" class="floorplan-img" />
                 </div>
                 <div class="card power-usage-hourly">
-                    <h3>Power Usage Hourly for the Day</h3>
+                    <h3>Water Meter Usage (m³) for the Day</h3>
                     <div class="chart-wrapper">
                         <PowerHourlyChart :data="hourlyChartData" />
                     </div>
@@ -72,7 +70,7 @@
             <!-- Bottom Row -->
             <div class="bottom-row">
                 <div class="card power-usage-daily">
-                    <h3>Power Usage Daily, over 7 days</h3>
+                    <h3>Water Meter Usage (m³), over 7 days</h3>
                     <div class="chart-wrapper">
                         <PowerDailyChart :data="dailyChartData" />
                     </div>
@@ -85,9 +83,10 @@
 
 
 <script>
+import * as XLSX from "xlsx";
 import DashboardCard from "@/components/DashboardCard.vue";
-import PowerHourlyChart from "../components/PowerHourlyChart.vue";
-import PowerDailyChart from "../components/PowerDailyChart.vue";
+import PowerHourlyChart from "../components/WaterHourlyChart.vue";
+import PowerDailyChart from "../components/WaterDailyChart.vue";
 
 export default {
     components: {
@@ -106,10 +105,113 @@ export default {
             dailyChartData: [], // Daily chart data
             intervalId: null, // For periodic data fetching
             floorplanOptions: [
-                { label: "GE Canteen", value: "Floorplan.jpg" },
+                { label: "Water Meter Pin Location", value: "WaterMap.png" },
             ],
-            selectedImage: "Floorplan.jpg", // Default image
+            selectedImage: "WaterMap.png", // Default image
         };
+    },
+    methods: {
+        async loadWaterMeterData() {
+            try {
+                const response = await fetch("/WaterMeterData.xlsx"); // Adjust path
+                const arrayBuffer = await response.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: "binary" });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                this.processWaterMeterData(data);
+            } catch (error) {
+                console.error("Error loading Water Meter Data:", error);
+            }
+        },
+        processWaterMeterData(data) {
+            const today = new Date().toISOString().split("T")[0];
+            const currentMonth = new Date().getMonth();
+            let totalToday = 0;
+            let totalMonthly = 0;
+            let highestDevice = { name: "N/A", value: 0 };
+
+            const dailyData = {};
+            const monthlyData = {};
+            const deviceReadings = {};
+
+            data.slice(1).forEach((row) => {
+                const [DeviceName, ReadingMeterTimeRaw, MeterReading] = [
+                    row[1],
+                    row[10], // Raw date from Excel
+                    parseFloat(row[16]) || 0,
+                ];
+
+                // Validate the date
+                const ReadingMeterTime = ReadingMeterTimeRaw ? new Date(ReadingMeterTimeRaw) : null;
+                if (!ReadingMeterTime || isNaN(ReadingMeterTime.getTime())) {
+                    console.warn(`Skipping invalid date: ${ReadingMeterTimeRaw}`);
+                    return;
+                }
+
+                const readingDate = ReadingMeterTime.toISOString().split("T")[0];
+
+                // Track device readings by date
+                if (!deviceReadings[DeviceName]) {
+                    deviceReadings[DeviceName] = {};
+                }
+                deviceReadings[DeviceName][readingDate] = MeterReading;
+
+                // Aggregate Daily and Monthly Totals
+                if (readingDate === today) {
+                    totalToday += MeterReading;
+                }
+                if (ReadingMeterTime.getMonth() === currentMonth) {
+                    totalMonthly += MeterReading;
+                }
+
+                // Aggregate daily data for the chart
+                if (!dailyData[readingDate]) dailyData[readingDate] = 0;
+                dailyData[readingDate] += MeterReading;
+
+                // Aggregate monthly data for the chart
+                const monthKey = `${ReadingMeterTime.getFullYear()}-${(ReadingMeterTime.getMonth() + 1)
+                    .toString()
+                    .padStart(2, "0")}`;
+                if (!monthlyData[monthKey]) monthlyData[monthKey] = 0;
+                monthlyData[monthKey] += MeterReading;
+            });
+
+            // Calculate highest consumption device based on differences
+            Object.entries(deviceReadings).forEach(([device, readings]) => {
+                const sortedDates = Object.keys(readings).sort((a, b) => new Date(a) - new Date(b));
+                const latestReading = readings[sortedDates[sortedDates.length - 1]];
+                const previousReading = readings[sortedDates[sortedDates.length - 2]] || 0;
+                const consumption = latestReading - previousReading;
+
+                if (consumption > highestDevice.value) {
+                    highestDevice = { name: device, value: consumption };
+                }
+            });
+
+            // Get the last 7 days (inclusive of today)
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+            // Prepare Chart Data (Filtered for Last 7 Days and Reversed Order)
+            this.dailyChartData = Object.entries(dailyData)
+                .filter(([date]) => new Date(date) >= sevenDaysAgo && new Date(date) <= new Date(today))
+                .map(([date, value]) => ({ label: date, value }))
+                .reverse();
+
+            this.monthlyChartData = Object.entries(monthlyData)
+                .map(([month, value]) => ({ label: month, value }))
+                .reverse(); // Reverse order for the monthly chart
+
+            // Update Component Data
+            this.waterConsumptionToday = totalToday.toFixed(2);
+            this.waterConsumptionMonthly = totalMonthly.toFixed(2);
+            this.highestConsumptionDevice = highestDevice.name;
+            this.highestConsumptionValue = highestDevice.value.toFixed(2);
+        },
+    },
+    mounted() {
+        this.loadWaterMeterData();
     },
 };
 </script>

@@ -1,6 +1,6 @@
 <template>
     <div class="daily-chart-container">
-        <h2>Water Meter Readings</h2>
+        <h2>Water Meter Usage (m³)</h2>
 
         <!-- Filters Section -->
         <div class="filters">
@@ -15,8 +15,7 @@
 
                 <select v-model="selectedType" @change="fetchData">
                     <option value="all">All Types</option>
-                    <option value="FCU">VRF Aircon</option>
-                    <option value="Lighting">Lighting</option>
+                    <option value="FCU">Water Meter</option>
                 </select>
 
                 <select v-model="selectedMeterSN" @change="fetchData">
