@@ -489,7 +489,6 @@ export default {
             this.toggleModal();
         },
         async processChartData(startDate = this.startDate, endDate = this.endDate) {
-            console.log("Start Date:", startDate, "End Date:", endDate);
             const labels = [];
             const data = [];
             const startDateObj = startDate ? new Date(startDate) : new Date();
@@ -501,74 +500,66 @@ export default {
 
             console.log("Parsed Start Date:", startDateObj, "Parsed End Date:", endDateObj);
 
-            const fetchExcelData = async () => {
-                try {
-                    const response = await fetch('/WaterMeterData.xlsx'); // Adjust path as needed
-                    const arrayBuffer = await response.arrayBuffer();
-                    const workbook = XLSX.read(arrayBuffer, { type: 'binary' });
-
-                    // Initialize an array to hold the data
-                    let selectedData = [];
-
-                    // If "All Meters" is selected, process all sheets
-                    if (this.selectedMeterSN === "all") {
-                        workbook.SheetNames.forEach((sheetName) => {
-                            const sheet = workbook.Sheets[sheetName];
-                            const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
-                            // Process the current sheet and add it to the combined data
-                            const sheetData = jsonData.slice(1).map((row) => ({
-                                IMEI: row[0],
-                                DeviceName: row[1],
-                                SerialNo: row[2],
-                                MeterReading: parseFloat(row[16]) || 0,
-                                ReadingMeterTime: new Date(row[10]) || null,
-                            }));
-
-                            selectedData = selectedData.concat(sheetData);
-                        });
-                    } else {
-                        // If a specific meter is selected, process only the relevant sheet
-                        const sheet = workbook.Sheets[this.selectedMeterSN];
-                        if (sheet) {
-                            const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
-                            selectedData = jsonData.slice(1).map((row) => ({
-                                IMEI: row[0],
-                                DeviceName: row[1],
-                                SerialNo: row[2],
-                                MeterReading: parseFloat(row[16]) || 0,
-                                ReadingMeterTime: new Date(row[10]) || null,
-                            }));
-                        } else {
-                            console.warn(`Sheet for meter ${this.selectedMeterSN} not found.`);
-                        }
-                    }
-
-                    console.log("Selected Data:", selectedData);
-                    return selectedData;
-                } catch (error) {
-                    console.error('Error loading Excel data:', error);
-                    return [];
-                }
-            };
-
             try {
-                const excelData = await fetchExcelData();
-                console.log("Fetched Excel Data:", excelData);
+                const spreadsheetId = "1Z4p2cMcQRBs9geMd0tVRHxoJrWzxiRAQk6lgG2vnDGo";
+                const apiKey = "AIzaSyCpfklZ6Co5YWR--V46w8MurzjucSXuauc";
 
-                // Filter data by date range
-                const filteredData = excelData.filter((entry) => {
+                // Fetch metadata to retrieve all sheet/tab names
+                const metadataUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties.title&key=${apiKey}`;
+                const metadataResponse = await axios.get(metadataUrl);
+                const sheetNames = metadataResponse.data.sheets.map(sheet => sheet.properties.title);
+
+                console.log("Sheet Names:", sheetNames);
+
+                // Construct ranges dynamically for all tab names
+                const ranges = sheetNames.map(name => `ranges='${encodeURIComponent(name)}'`).join("&");
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchGet?${ranges}&key=${apiKey}`;
+
+                const response = await axios.get(url);
+                const rawData = response.data.valueRanges;
+
+                let selectedData = [];
+
+                if (this.selectedMeterSN === "all") {
+                    rawData.forEach((sheet) => {
+                        const rows = sheet.values.slice(1); // Skip header row
+                        const sheetData = rows.map((row) => ({
+                            IMEI: row[0],
+                            DeviceName: row[1],
+                            SerialNo: row[2],
+                            MeterReading: parseFloat(row[16]) || 0,
+                            ReadingMeterTime: new Date(row[10]) || null,
+                        }));
+                        selectedData = selectedData.concat(sheetData);
+                    });
+                } else {
+                    const sheet = rawData.find((sheet) =>
+                        sheet.range.includes(this.selectedMeterSN)
+                    );
+                    if (sheet) {
+                        const rows = sheet.values.slice(1); // Skip header row
+                        selectedData = rows.map((row) => ({
+                            IMEI: row[0],
+                            DeviceName: row[1],
+                            SerialNo: row[2],
+                            MeterReading: parseFloat(row[16]) || 0,
+                            ReadingMeterTime: new Date(row[10]) || null,
+                        }));
+                    } else {
+                        console.warn(`Sheet for meter ${this.selectedMeterSN} not found.`);
+                    }
+                }
+
+                console.log("Selected Data:", selectedData);
+
+                const filteredData = selectedData.filter((entry) => {
                     const readingTime = entry.ReadingMeterTime;
-
                     return (
                         readingTime &&
                         readingTime >= startDateObj &&
                         readingTime <= endDateObj
                     );
                 });
-
-                console.log("Filtered Data:", filteredData);
 
                 if (filteredData.length === 0) {
                     console.warn("No data available for the selected meter or date range.");
@@ -578,14 +569,15 @@ export default {
                     return;
                 }
 
-                // Aggregate data by date
                 const aggregatedData = {};
                 filteredData.forEach((entry) => {
                     let dateKey;
 
                     if (this.selectedTimeRange === "Monthly") {
                         const time = entry.ReadingMeterTime;
-                        dateKey = `${time.getFullYear()}-${(time.getMonth() + 1).toString().padStart(2, "0")}`;
+                        dateKey = `${time.getFullYear()}-${(time.getMonth() + 1)
+                            .toString()
+                            .padStart(2, "0")}`;
                     } else {
                         dateKey = entry.ReadingMeterTime.toISOString().split("T")[0];
                     }
@@ -596,17 +588,12 @@ export default {
                     aggregatedData[dateKey] += entry.MeterReading;
                 });
 
-                console.log("Aggregated Data:", aggregatedData);
-
                 Object.keys(aggregatedData)
                     .sort((a, b) => new Date(a) - new Date(b))
                     .forEach((key) => {
                         labels.push(key);
                         data.push(aggregatedData[key]);
                     });
-
-                console.log("Labels after aggregation:", labels);
-                console.log("Data after aggregation:", data);
 
                 this.chartLabels = [...labels];
                 this.chartData = [...data];
