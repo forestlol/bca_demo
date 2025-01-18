@@ -449,8 +449,11 @@ export default {
 
             const sortedLabels = Array.from(labels).sort((a, b) => new Date(a) - new Date(b));
 
-            // Format the labels to show "YYYY-MM" for monthly data
-            this.chartLabels = sortedLabels.map((label) => label);
+            // Remove 'T' and 'Z' from the labels
+            this.chartLabels = sortedLabels.map((label) => {
+                const date = new Date(label);
+                return date.toISOString().replace('T', ' ').replace('Z', '');
+            });
 
             this.comparisonChartLabels = this.chartLabels;
             this.comparisonChartData = datasets;
@@ -491,7 +494,7 @@ export default {
         fetchData() {
             // If startDate or endDate is null, set defaults
             this.computeBaselineData(); // Recompute baseline after data is fetched
-            //this.fetchComparisonData();
+            this.fetchComparisonData();
             this.processChartData(this.startDate, this.endDate);
         },
         populateDropdowns(data) {
