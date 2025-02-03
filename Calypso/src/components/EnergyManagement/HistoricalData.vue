@@ -642,6 +642,7 @@ export default {
                                     time: row[0], // Time column
                                     meterSN: sheet.range.split("!")[0], // Extract tab name
                                     daily_kWh: parseFloat(row[3]) || 0, // Daily_kWh
+                                    hourly_kWh: parseFloat(row[4] || 0) // Hourly_kWh
                                 });
                             }
                         }
@@ -680,59 +681,64 @@ export default {
 
                 // Continue processing with validFilteredData
                 if (this.selectedTimeRange === "Daily") {
+                    // Process data for daily aggregation
                     if (this.selectedMeterSN === "all") {
                         const aggregatedData = {};
                         validFilteredData.forEach((entry) => {
-                            const dateKey = entry.time.split(" ")[0];
+                            const dateKey = entry.time.split(" ")[0]; // Extract the date part
                             if (!aggregatedData[dateKey]) {
                                 aggregatedData[dateKey] = 0;
                             }
-                            aggregatedData[dateKey] += entry.daily_kWh || 0;
+                            aggregatedData[dateKey] += entry.daily_kWh || 0; // Sum daily_kWh values
                         });
 
                         Object.keys(aggregatedData)
-                            .sort((a, b) => new Date(a) - new Date(b))
+                            .sort((a, b) => new Date(a) - new Date(b)) // Sort by date
                             .forEach((key) => {
                                 labels.push(key);
                                 data.push(aggregatedData[key]);
                             });
                     } else {
                         validFilteredData
-                            .sort((a, b) => new Date(a.time) - new Date(b.time))
+                            .sort((a, b) => new Date(a.time) - new Date(b.time)) // Sort by timestamp
                             .forEach((entry) => {
-                                labels.push(entry.time);
-                                data.push(entry.daily_kWh);
+                                const dateKey = entry.time.split(" ")[0]; // Extract the date part
+                                if (!labels.includes(dateKey)) {
+                                    labels.push(dateKey); // Add unique date labels
+                                    data.push(entry.daily_kWh || 0); // Add daily_kWh for each date
+                                }
                             });
                     }
                 } else if (this.selectedTimeRange === "Hourly") {
+                    // Process data for hourly aggregation
                     const hourlyData = {};
 
-                    // Divide daily_kWh by 24 and aggregate hourly data
-                    filteredData.forEach((entry) => {
+                    validFilteredData.forEach((entry) => {
                         const entryDate = new Date(entry.time);
 
-                        for (let hour = 0; hour < 24; hour++) {
-                            const hourKey = `${entryDate.getFullYear()}-${(entryDate.getMonth() + 1)
+                        // Construct the hourly key
+                        const hourKey = `${entryDate.getFullYear()}-${(entryDate.getMonth() + 1)
+                            .toString()
+                            .padStart(2, "0")}-${entryDate.getDate().toString().padStart(2, "0")} ${entryDate
+                                .getHours()
                                 .toString()
-                                .padStart(2, "0")}-${entryDate.getDate().toString().padStart(2, "0")} ${hour
-                                    .toString()
-                                    .padStart(2, "0")}:00`;
+                                .padStart(2, "0")}:00`;
 
-                            if (!hourlyData[hourKey]) {
-                                hourlyData[hourKey] = 0;
-                            }
-                            hourlyData[hourKey] += entry.daily_kWh / 24; // Divide by 24 for hourly data
+                        // Initialize if not already set
+                        if (!hourlyData[hourKey]) {
+                            hourlyData[hourKey] = 0;
                         }
+
+                        // Add hourly_kWh directly
+                        hourlyData[hourKey] += entry.hourly_kWh || 0;
                     });
 
-                    // Sort and limit to the range
+                    // Sort and populate labels and data arrays
                     Object.keys(hourlyData)
                         .sort((a, b) => new Date(a) - new Date(b))
                         .forEach((key) => {
-                            if (labels.length < 24) {
-                                labels.push(key);
-                                data.push(hourlyData[key]);
-                            }
+                            labels.push(key);
+                            data.push(hourlyData[key]);
                         });
                 } else if (this.selectedTimeRange === "Monthly") {
                     const monthlyData = {};
