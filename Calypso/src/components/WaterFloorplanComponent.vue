@@ -333,7 +333,7 @@ export default {
     fetchMetricsForDevice(device) {
       axios
         .get(
-          `https://cb1a-119-234-9-157.ngrok-free.app/api/device_data/${device.id}`,
+          `https://b513-119-234-9-157.ngrok-free.app/api/device_data/${device.id}`,
           {
             headers: {
               Accept: "application/json",
