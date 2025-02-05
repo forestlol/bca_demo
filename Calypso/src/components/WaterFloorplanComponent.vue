@@ -2,18 +2,10 @@
   <div>
     <!-- Tabs Navigation (Centered) -->
     <nav class="tabs">
-      <button
-        :class="{ active: activeTab === 'floorplan' }"
-        @click="activeTab = 'floorplan'"
-        type="button"
-      >
+      <button :class="{ active: activeTab === 'floorplan' }" @click="activeTab = 'floorplan'" type="button">
         Floorplan
       </button>
-      <button
-        :class="{ active: activeTab === 'devices' }"
-        @click="activeTab = 'devices'"
-        type="button"
-      >
+      <button :class="{ active: activeTab === 'devices' }" @click="activeTab = 'devices'" type="button">
         Devices
       </button>
     </nav>
@@ -26,20 +18,11 @@
       <div class="heatmap-floorplan">
         <img :src="waterMapImage" alt="Floorplan" class="floorplan-image" />
         <!-- Circles for meters -->
-        <div
-          v-for="circle in circles"
-          :key="circle.id"
-          class="circle"
-          :style="{ top: circle.y + '%', left: circle.x + '%' }"
-          @mouseenter="showTooltip(circle, $event)"
-          @mouseleave="hideTooltip"
-        ></div>
+        <div v-for="circle in circles" :key="circle.id" class="circle"
+          :style="{ top: circle.y + '%', left: circle.x + '%' }" @mouseenter="showTooltip(circle, $event)"
+          @mouseleave="hideTooltip"></div>
         <!-- Tooltip -->
-        <div
-          v-if="tooltip.visible"
-          class="value-tooltip"
-          :style="{ top: tooltip.y + 'px', left: tooltip.x + 'px' }"
-        >
+        <div v-if="tooltip.visible" class="value-tooltip" :style="{ top: tooltip.y + 'px', left: tooltip.x + 'px' }">
           <p><strong>{{ tooltip.title }}</strong></p>
           <p>Device: {{ tooltip.deviceName }}</p>
           <p>Meter Reading: {{ tooltip.meterReading }} m³</p>
@@ -58,11 +41,7 @@
         Loading devices...
       </div>
       <div v-else>
-        <section
-          v-for="(devices, category) in categorizedDevices"
-          :key="category"
-          class="category"
-        >
+        <section v-for="(devices, category) in categorizedDevices" :key="category" class="category">
           <h3>{{ category }}</h3>
           <div class="grid-container">
             <div v-for="device in devices" :key="device.id" class="grid-item">
@@ -76,11 +55,11 @@
                 </p>
               </div>
               <!-- Hidden details revealed on hover -->
-              <div class="detail-overlay">
+              <!-- <div class="detail-overlay">
                 <p>Battery Voltage: {{ device.batteryVoltage }}</p>
                 <p>Measure Mode: {{ device.measureMode }}</p>
                 <p>Valve Status: {{ device.valveStatus }}</p>
-              </div>
+              </div> -->
             </div>
           </div>
         </section>
@@ -359,10 +338,10 @@ export default {
           }
 
           const readings = response.data.data.map((entry) => ({
-            meterReading: entry.meterReading || "N/A",
-            measureMode: entry.measureMode || "N/A",
-            batteryVoltage: entry.batteryVoltage || "N/A",
-            valveStatus: entry.valveStatus || "N/A",
+            meterReading: entry.meterReading ?? "N/A",
+            measureMode: entry.measureMode ?? "N/A",
+            batteryVoltage: entry.batteryVoltage ?? "N/A",
+            valveStatus: entry.valveStatus ?? "N/A",
             timestamp: entry.timestamp
               ? new Date(entry.timestamp).toLocaleString()
               : "N/A"
@@ -522,10 +501,6 @@ export default {
 
 .summary {
   transition: opacity 0.3s ease;
-}
-
-.grid-item:hover .summary {
-  opacity: 0;
 }
 
 .detail-overlay {
