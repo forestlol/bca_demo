@@ -1,31 +1,45 @@
 <template>
   <div>
-    <!-- Tabs Navigation -->
-    <div class="tabs">
-      <button :class="{ active: activeTab === 'floorplan' }" @click="activeTab = 'floorplan'">
+    <!-- Tabs Navigation (Centered) -->
+    <nav class="tabs">
+      <button
+        :class="{ active: activeTab === 'floorplan' }"
+        @click="activeTab = 'floorplan'"
+        type="button"
+      >
         Floorplan
       </button>
-      <button :class="{ active: activeTab === 'devices' }" @click="activeTab = 'devices'">
+      <button
+        :class="{ active: activeTab === 'devices' }"
+        @click="activeTab = 'devices'"
+        type="button"
+      >
         Devices
       </button>
-    </div>
+    </nav>
 
     <!-- Floorplan Tab Content -->
     <div v-if="activeTab === 'floorplan'" class="heatmap-container">
-      <!-- Title Bar -->
       <div class="heatmap-title-bar">
         Water Meter Pin Location
       </div>
-
-      <!-- Floorplan Section -->
       <div class="heatmap-floorplan">
         <img :src="waterMapImage" alt="Floorplan" class="floorplan-image" />
         <!-- Circles for meters -->
-        <div v-for="circle in circles" :key="circle.id" class="circle"
-          :style="{ top: circle.y + '%', left: circle.x + '%' }" @mouseenter="showTooltip(circle, $event)"
-          @mouseleave="hideTooltip"></div>
+        <div
+          v-for="circle in circles"
+          :key="circle.id"
+          class="circle"
+          :style="{ top: circle.y + '%', left: circle.x + '%' }"
+          @mouseenter="showTooltip(circle, $event)"
+          @mouseleave="hideTooltip"
+        ></div>
         <!-- Tooltip -->
-        <div v-if="tooltip.visible" class="value-tooltip" :style="{ top: tooltip.y + 'px', left: tooltip.x + 'px' }">
+        <div
+          v-if="tooltip.visible"
+          class="value-tooltip"
+          :style="{ top: tooltip.y + 'px', left: tooltip.x + 'px' }"
+        >
           <p><strong>{{ tooltip.title }}</strong></p>
           <p>Device: {{ tooltip.deviceName }}</p>
           <p>Meter Reading: {{ tooltip.meterReading }} m³</p>
@@ -35,38 +49,53 @@
 
     <!-- Devices Tab Content -->
     <div v-if="activeTab === 'devices'" class="devices-container">
-      <h2>Total Water Consumption: {{ totalWaterConsumption }} m³</h2>
-      <h2>This Month: {{ currentDate }}</h2>
+      <div class="devices-header">
+        <h2>Total Water Consumption: {{ totalWaterConsumption }} m³</h2>
+        <p>This Month: {{ currentDate }}</p>
+      </div>
 
       <div v-if="loadingDevices" class="loading">
         Loading devices...
       </div>
-
-      <div v-for="(devices, category) in categorizedDevices" :key="category" class="category">
-        <h3>{{ category }}</h3>
-        <div class="grid-container">
-          <div v-for="device in devices" :key="device.id" class="grid-item">
-            <strong>{{ device.device_name }}</strong>
-            <p>Dev EUI: {{ device.dev_eui }}</p>
-            <p>Total Consumption: <strong>{{ device.totalConsumption || "0.00" }} m³</strong></p>
+      <div v-else>
+        <section
+          v-for="(devices, category) in categorizedDevices"
+          :key="category"
+          class="category"
+        >
+          <h3>{{ category }}</h3>
+          <div class="grid-container">
+            <div v-for="device in devices" :key="device.id" class="grid-item">
+              <!-- Summary content shown by default -->
+              <div class="summary">
+                <h4>{{ device.device_name }}</h4>
+                <p>Dev EUI: {{ device.dev_eui }}</p>
+                <p>
+                  Total Consumption:
+                  <strong>{{ device.totalConsumption || "0.00" }} m³</strong>
+                </p>
+              </div>
+              <!-- Hidden details revealed on hover -->
+              <div class="detail-overlay">
+                <p>Battery Voltage: {{ device.batteryVoltage }}</p>
+                <p>Measure Mode: {{ device.measureMode }}</p>
+                <p>Valve Status: {{ device.valveStatus }}</p>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
       </div>
-
     </div>
-
-
   </div>
 </template>
 
 <script>
 import * as XLSX from "xlsx";
-import axios from "axios"; // Ensure axios is imported
+import axios from "axios";
 
 export default {
   data() {
     return {
-
       currentDate: new Date().toLocaleDateString(),
       categorizedDevices: {
         "Cooling Tower": [
@@ -136,7 +165,7 @@ export default {
         { id: 18, x: 0, y: 0, title: "", deviceName: "", meterReading: 0 },
         { id: 19, x: 0, y: 0, title: "", deviceName: "", meterReading: 0 },
         { id: 20, x: 0, y: 0, title: "", deviceName: "", meterReading: 0 },
-        { id: 21, x: 0, y: 0, title: "", deviceName: "", meterReading: 0 },
+        { id: 21, x: 0, y: 0, title: "", deviceName: "", meterReading: 0 }
       ],
       tooltip: {
         visible: false,
@@ -144,10 +173,10 @@ export default {
         y: 0,
         title: "",
         deviceName: "",
-        meterReading: 0,
+        meterReading: 0
       },
       devices: [],
-      loadingDevices: false,
+      loadingDevices: false
     };
   },
   computed: {
@@ -155,11 +184,13 @@ export default {
       return require("@/assets/WaterMap.png");
     },
     totalWaterConsumption() {
-      return this.devices.reduce((sum, device) => sum + (parseFloat(device.totalConsumption) || 0), 0).toFixed(2);
+      return this.devices
+        .reduce((sum, device) => sum + (parseFloat(device.totalConsumption) || 0), 0)
+        .toFixed(2);
     },
     currentMonthDate() {
       const now = new Date();
-      return now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      return now.toLocaleString("en-US", { month: "long", year: "numeric" });
     }
   },
   watch: {
@@ -172,19 +203,21 @@ export default {
   },
   methods: {
     updateTotalWaterConsumption() {
-      this.totalWaterConsumption = this.devices.reduce((sum, device) => sum + (parseFloat(device.totalConsumption) || 0), 0).toFixed(2);
+      this.totalWaterConsumption = this.devices
+        .reduce((sum, device) => sum + (parseFloat(device.totalConsumption) || 0), 0)
+        .toFixed(2);
       this.$forceUpdate();
     },
     async fetchWaterMeterData() {
       try {
-        const response = await fetch("/WaterMeterData.xlsx"); // Replace with the actual path if needed
+        const response = await fetch("/WaterMeterData.xlsx");
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: "array" });
 
         const deviceReadings = {};
         const predefinedCoordinates = [
-          { x: 10, y: 10 }, // Predefined coordinates for meter 1
-          { x: 54.5, y: 46 }, // Predefined coordinates for meter 2
+          { x: 10, y: 10 },
+          { x: 54.5, y: 46 },
           { x: 60, y: 52 },
           { x: 26.5, y: 82 },
           { x: 50, y: 20 },
@@ -203,50 +236,38 @@ export default {
           { x: 15, y: 75 },
           { x: 23, y: 64 },
           { x: 22.5, y: 52 },
-          { x: 65.5, y: 71 },
+          { x: 65.5, y: 71 }
         ];
 
-        // Process each sheet (tab) in the workbook
         workbook.SheetNames.forEach((sheetName) => {
           const sheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+          if (jsonData.length <= 1) return;
 
-          // Skip if the sheet has no rows
-          if (jsonData.length <= 1) {
-            return;
-          }
-
-          // Process the data row by row
           jsonData.slice(1).forEach((row) => {
             const [DeviceName, ReadingMeterTimeRaw, MeterReading] = [
-              row[1], // Device Name
-              row[10], // Reading Meter Time
-              parseFloat(row[16]) || 0, // Meter Reading
+              row[1],
+              row[10],
+              parseFloat(row[16]) || 0
             ];
 
-            // Validate ReadingMeterTime
             const ReadingMeterTime = ReadingMeterTimeRaw
               ? new Date(ReadingMeterTimeRaw)
               : null;
-            if (!ReadingMeterTime || isNaN(ReadingMeterTime.getTime())) {
-              return;
-            }
+            if (!ReadingMeterTime || isNaN(ReadingMeterTime.getTime())) return;
 
             const readingDate = ReadingMeterTime.toISOString().split("T")[0];
 
-            // Organize readings by device
             if (!deviceReadings[sheetName]) {
               deviceReadings[sheetName] = {};
             }
             if (!deviceReadings[sheetName][DeviceName]) {
               deviceReadings[sheetName][DeviceName] = {};
             }
-            deviceReadings[sheetName][DeviceName][readingDate] =
-              MeterReading;
+            deviceReadings[sheetName][DeviceName][readingDate] = MeterReading;
           });
         });
 
-        // Generate circles data for all devices
         this.circles = Object.entries(deviceReadings).flatMap(
           ([sheetName, devices], deviceIndex) => {
             return Object.entries(devices).map(([DeviceName, readings]) => {
@@ -255,8 +276,6 @@ export default {
               );
               const latestDate = sortedDates[sortedDates.length - 1];
               const latestReading = readings[latestDate] || 0;
-
-              // Use predefined coordinates based on the index
               const coordinates =
                 predefinedCoordinates[deviceIndex] || { x: 0, y: 0 };
 
@@ -264,18 +283,15 @@ export default {
                 id: this.circles.length + 1,
                 x: coordinates.x,
                 y: coordinates.y,
-                title: sheetName, // Use sheet name as the title
-                deviceName: DeviceName, // Add device name
-                meterReading: latestReading, // Use the latest reading
+                title: sheetName,
+                deviceName: DeviceName,
+                meterReading: latestReading
               };
             });
           }
         );
 
-        console.log(
-          "Processed circles with sheet titles and latest readings:",
-          this.circles
-        );
+        console.log("Processed circles:", this.circles);
       } catch (error) {
         console.error("Error reading WaterMeterData.xlsx:", error);
       }
@@ -288,9 +304,9 @@ export default {
         visible: true,
         x: tooltipX,
         y: tooltipY,
-        title: circle.title, // Sheet name
-        deviceName: circle.deviceName, // Device name
-        meterReading: circle.meterReading.toFixed(2), // Meter reading
+        title: circle.title,
+        deviceName: circle.deviceName,
+        meterReading: circle.meterReading.toFixed(2)
       };
     },
     hideTooltip() {
@@ -298,13 +314,13 @@ export default {
     },
     fetchDevicesData() {
       this.loadingDevices = true;
-
-      // Flatten categorized devices into a reactive array
       this.devices = Object.values(this.categorizedDevices).flat();
 
       console.log("Fetching data for devices:", this.devices);
 
-      Promise.all(this.devices.map(device => this.fetchMetricsForDevice(device)))
+      Promise.all(
+        this.devices.map((device) => this.fetchMetricsForDevice(device))
+      )
         .then(() => {
           console.log("All device metrics fetched successfully.");
           this.loadingDevices = false;
@@ -316,38 +332,49 @@ export default {
     },
     fetchMetricsForDevice(device) {
       axios
-        .get(`https://cb1a-119-234-9-157.ngrok-free.app/api/device_data/${device.id}`, {
-          headers: {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "ngrok-skip-browser-warning": "true"
+        .get(
+          `https://cb1a-119-234-9-157.ngrok-free.app/api/device_data/${device.id}`,
+          {
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+              "ngrok-skip-browser-warning": "true"
+            }
           }
-        })
+        )
         .then((response) => {
           console.log(`RAW Response for Device ${device.id}:`, response.data);
 
-          // ✅ Ensure response contains 'data' and is an array
-          if (!response.data || !response.data.data || !Array.isArray(response.data.data) || response.data.data.length === 0) {
-            console.warn(`Invalid response format for device ${device.id}:`, response.data);
+          if (
+            !response.data ||
+            !response.data.data ||
+            !Array.isArray(response.data.data) ||
+            response.data.data.length === 0
+          ) {
+            console.warn(
+              `Invalid response format for device ${device.id}:`,
+              response.data
+            );
             return;
           }
 
-          // ✅ Store ALL readings
-          const readings = response.data.data.map(entry => ({
+          const readings = response.data.data.map((entry) => ({
             meterReading: entry.meterReading || "N/A",
             measureMode: entry.measureMode || "N/A",
             batteryVoltage: entry.batteryVoltage || "N/A",
             valveStatus: entry.valveStatus || "N/A",
-            timestamp: entry.timestamp ? new Date(entry.timestamp).toLocaleString() : "N/A"
+            timestamp: entry.timestamp
+              ? new Date(entry.timestamp).toLocaleString()
+              : "N/A"
           }));
 
-          // ✅ Assign all readings to the device (Reactively)
           Object.assign(device, {
-            readings,  // Store multiple readings
-            totalConsumption: readings.reduce((sum, entry) => sum + (parseFloat(entry.meterReading) || 0), 0).toFixed(2)
+            readings,
+            totalConsumption: readings
+              .reduce((sum, entry) => sum + (parseFloat(entry.meterReading) || 0), 0)
+              .toFixed(2)
           });
 
-          // ✅ Update total for all devices
           this.updateTotalWaterConsumption();
         })
         .catch((error) => {
@@ -357,90 +384,76 @@ export default {
   },
   mounted() {
     this.fetchWaterMeterData();
-    // Fetch devices (and their metrics) once the component is mounted.
     this.fetchDevicesData();
-  },
+  }
 };
 </script>
 
 <style scoped>
-/* Tabs Styles */
+/* Centered Tabs Navigation */
 .tabs {
   display: flex;
+  justify-content: center;
+  border-bottom: 1px solid #ccc;
   margin-bottom: 20px;
 }
 
 .tabs button {
-  flex: 1;
-  padding: 10px;
-  cursor: pointer;
-  background-color: #f1f1f1;
+  background: none;
   border: none;
-  border-bottom: 2px solid transparent;
+  padding: 10px 20px;
   font-size: 16px;
-  transition: background-color 0.2s, border-bottom 0.2s;
-}
-
-.tabs button:hover {
-  background-color: #e2e2e2;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: border-bottom 0.3s, font-weight 0.3s;
 }
 
 .tabs button.active {
-  border-bottom: 2px solid #007bff;
+  border-bottom: 2px solid black;
   font-weight: bold;
-  background-color: #fff;
 }
 
-/* Floorplan & Tooltip Styles (existing) */
+/* Floorplan & Tooltip Styles */
 .heatmap-container {
-  border: 2px solid #ddd;
-  border-radius: 10px;
-  overflow: hidden;
-  background-color: #f9f9f9;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  width: 100%;
   max-width: 1200px;
   margin: 0 auto;
+  padding: 20px;
+  border: 1px solid #ccc;
 }
 
 .heatmap-title-bar {
-  background-color: rgba(184, 184, 184, 0.1);
-  color: black;
-  padding: 10px 20px;
+  padding: 10px;
   font-size: 18px;
   font-weight: bold;
+  border-bottom: 1px solid #ccc;
+  margin-bottom: 10px;
 }
 
 .heatmap-floorplan {
   position: relative;
-  width: 100%;
-  height: auto;
 }
 
 .floorplan-image {
-  display: block;
   width: 100%;
-  height: auto;
+  display: block;
 }
 
 .circle {
   position: absolute;
   width: 20px;
   height: 20px;
-  background-color: transparent;
   border-radius: 50%;
   cursor: pointer;
 }
 
 .value-tooltip {
   position: fixed;
-  background-color: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 10px;
-  border-radius: 8px;
+  background: #000;
+  color: #fff;
+  padding: 8px;
+  border-radius: 4px;
   font-size: 12px;
   z-index: 10;
-  text-align: left;
   pointer-events: none;
   white-space: nowrap;
 }
@@ -450,123 +463,95 @@ export default {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
-  background-color: #fafafa;
-  border: 1px solid #ddd;
-  border-radius: 10px;
+  border: 1px solid #ccc;
 }
 
-.device-card {
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  padding: 15px;
-  margin-bottom: 10px;
-  background-color: #fff;
+.devices-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 20px;
+}
+
+.devices-header h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.devices-header p {
+  margin: 0;
+  font-size: 16px;
 }
 
 .loading {
   text-align: center;
-  font-size: 16px;
   padding: 20px;
+  font-size: 16px;
 }
 
 .category {
   margin-bottom: 30px;
-  text-align: center;
 }
 
-h3 {
-  font-size: 24px;
-  font-weight: bold;
-  color: #1a237e;
-  /* Dark blue to highlight the category */
-  text-transform: uppercase;
-  border-bottom: 3px solid #1e293b;
-  display: inline-block;
-  padding-bottom: 5px;
-  margin-bottom: 15px;
-}
-
-.grid-container {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  /* Ensures 3 columns */
-  gap: 20px;
-  /* More spacing between items */
-  padding: 20px;
-}
-
-.grid-item {
-  background: linear-gradient(145deg, #ffffff, #e3e3e3);
-  box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  border-radius: 12px;
-  text-align: center;
-  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
-  border: 2px solid #1e293b;
-}
-
-.grid-item:hover {
-  transform: scale(1.05);
-  box-shadow: 8px 8px 20px rgba(0, 0, 0, 0.2);
-}
-
-strong {
+.category h3 {
   font-size: 18px;
-  color: #1e293b;
-  /* Slightly darker blue for better contrast */
-}
-
-p {
-  font-size: 14px;
-  color: #424242;
-  margin-top: 5px;
-}
-
-.header-container {
-  text-align: center;
-  background-color: #f1f1f1;
-  padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-}
-
-.header-container h2,
-.header-container h4 {
-  margin: 5px;
-  color: #1a237e;
-}
-
-.highlight {
-  color: #ff5722;
-  font-weight: bold;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 5px;
 }
 
 .grid-container {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  /* 3 columns */
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 20px;
-  padding: 20px;
 }
 
+/* Device Card (Box) with Hover Interaction */
 .grid-item {
-  background: #ffffff;
-  box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  border-radius: 12px;
-  text-align: center;
-  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
-  border: 2px solid #1e293b;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #ccc;
+  padding: 15px;
+  border-radius: 4px;
+  transition: box-shadow 0.3s ease;
 }
 
 .grid-item:hover {
-  transform: scale(1.05);
-  box-shadow: 8px 8px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.timestamp {
-  font-size: 12px;
-  color: gray;
-  margin-top: 5px;
+.summary {
+  transition: opacity 0.3s ease;
+}
+
+.grid-item:hover .summary {
+  opacity: 0;
+}
+
+.detail-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.95);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.grid-item:hover .detail-overlay {
+  opacity: 1;
+}
+
+.grid-item h4 {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+.grid-item p {
+  margin: 5px 0;
+  font-size: 14px;
 }
 </style>
