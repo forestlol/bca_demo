@@ -33,8 +33,13 @@
     <!-- Devices Tab Content -->
     <div v-if="activeTab === 'devices'" class="devices-container">
       <div class="devices-header">
-        <h2>Total Water Consumption: {{ totalWaterConsumption }} m³</h2>
-        <p>This Month: {{ currentDate }}</p>
+        <h2>
+          Total Water Consumption: {{ totalWaterConsumption }} m³
+          <br>
+          Total Daily Consumption: {{ totalDailyConsumption }} m³
+          <br>
+          Total Monthly Consumption: {{ totalMonthlyConsumption }} m³
+        </h2>
       </div>
 
       <div v-if="loadingDevices" class="loading">
@@ -53,13 +58,9 @@
                   Total Consumption:
                   <strong>{{ device.totalConsumption || "0.00" }} m³</strong>
                 </p>
+                <p>Consumption(Daily): <strong>{{ device.dailyConsumption }} m³</strong></p>
+                <p>Consumption(Monthly): <strong>{{ device.monthlyConsumption }} m³</strong></p>
               </div>
-              <!-- Hidden details revealed on hover -->
-              <!-- <div class="detail-overlay">
-                <p>Battery Voltage: {{ device.batteryVoltage }}</p>
-                <p>Measure Mode: {{ device.measureMode }}</p>
-                <p>Valve Status: {{ device.valveStatus }}</p>
-              </div> -->
             </div>
           </div>
         </section>
@@ -170,6 +171,30 @@ export default {
     currentMonthDate() {
       const now = new Date();
       return now.toLocaleString("en-US", { month: "long", year: "numeric" });
+    },
+    totalDailyConsumption() {
+      // Ensure devices array exists.
+      if (!this.devices || !this.devices.length) return "0.00";
+
+      // Sum the dailyConsumption values (ignoring non-numeric "N/A" values)
+      const total = this.devices.reduce((sum, device) => {
+        // Parse the dailyConsumption value (if not available or invalid, use 0)
+        const value = parseFloat(device.dailyConsumption);
+        return sum + (isNaN(value) ? 0 : value);
+      }, 0);
+
+      // Return the total formatted to 2 decimals.
+      return total.toFixed(2);
+    },
+    totalMonthlyConsumption() {
+      if (!this.devices || !this.devices.length) return "0.00";
+
+      const total = this.devices.reduce((sum, device) => {
+        const value = parseFloat(device.monthlyConsumption);
+        return sum + (isNaN(value) ? 0 : value);
+      }, 0);
+
+      return total.toFixed(2);
     }
   },
   watch: {
@@ -294,76 +319,205 @@ export default {
     fetchDevicesData() {
       this.loadingDevices = true;
       this.devices = Object.values(this.categorizedDevices).flat();
-
       console.log("Fetching data for devices:", this.devices);
 
+      // First, fetch metrics for all devices
       Promise.all(
         this.devices.map((device) => this.fetchMetricsForDevice(device))
       )
         .then(() => {
           console.log("All device metrics fetched successfully.");
+          Promise.all(this.devices.map(device => this.fetchDailyConsumption(device)))
+            .then(() => {
+              console.log("Daily consumption values have been updated for all devices.");
+              // Optionally, update any component data or charts on the frontend.
+            })
+            .catch((error) => {
+              console.error("Error fetching daily consumption for one or more devices:", error);
+            });
+          // After loading devices, update monthly consumption for each device:
+          Promise.all(this.devices.map(device => this.fetchMonthlyConsumption(device)))
+            .then(() => {
+              console.log("Monthly consumption values updated for all devices.");
+            })
+            .catch((error) => {
+              console.error("Error updating monthly consumption for one or more devices:", error);
+            });
+
+        })
+        .then(() => {
+          // Optionally update highest consumption device here...
+          let highestDevice = { name: "N/A", value: 0 };
+          this.devices.forEach((device) => {
+            const consumption = parseFloat(device.totalConsumption) || 0;
+            if (consumption > highestDevice.value) {
+              highestDevice = { name: device.device_name, value: consumption };
+            }
+          });
+          this.highestConsumptionDevice = highestDevice.name;
+          this.highestConsumptionValue = highestDevice.value.toFixed(2);
+
           this.loadingDevices = false;
         })
         .catch((error) => {
-          console.error("Error fetching device metrics:", error);
+          console.error("Error fetching device metrics or consumption differences:", error);
           this.loadingDevices = false;
         });
     },
-    fetchMetricsForDevice(device) {
-      axios
-        .get(
-          `https://b513-119-234-9-157.ngrok-free.app/api/device_data/${device.id}`,
-          {
-            headers: {
-              Accept: "application/json",
-              "Content-Type": "application/json",
-              "ngrok-skip-browser-warning": "true"
-            }
-          }
-        )
-        .then((response) => {
-          console.log(`RAW Response for Device ${device.id}:`, response.data);
 
+    fetchMetricsForDevice(device) {
+      return axios
+        .get("https://b513-119-234-9-157.ngrok-free.app/api/total_consumption", {
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true"
+          }
+        })
+        .then((response) => {
+          console.log(`RAW Response for Total Consumption:`, response.data);
+
+          // Check that the response contains an array of total_consumption data.
           if (
             !response.data ||
-            !response.data.data ||
-            !Array.isArray(response.data.data) ||
-            response.data.data.length === 0
+            !response.data.total_consumption ||
+            !Array.isArray(response.data.total_consumption)
           ) {
-            console.warn(
-              `Invalid response format for device ${device.id}:`,
-              response.data
-            );
+            console.warn("Invalid response format for total consumption:", response.data);
             return;
           }
 
-          const readings = response.data.data.map((entry) => ({
-            meterReading: entry.meterReading ?? "N/A",
-            measureMode: entry.measureMode ?? "N/A",
-            batteryVoltage: entry.batteryVoltage ?? "N/A",
-            valveStatus: entry.valveStatus ?? "N/A",
-            timestamp: entry.timestamp
-              ? new Date(entry.timestamp).toLocaleString()
-              : "N/A"
-          }));
+          // Find the matching device by comparing dev_eui.
+          const matchedDevice = response.data.total_consumption.find(
+            (item) => item.dev_eui === device.dev_eui
+          );
 
-          Object.assign(device, {
-            readings,
-            totalConsumption: readings
-              .reduce((sum, entry) => sum + (parseFloat(entry.meterReading) || 0), 0)
-              .toFixed(2)
-          });
+          if (matchedDevice) {
+            // Update the device's totalConsumption using the value from the API.
+            device.totalConsumption = parseFloat(matchedDevice.total_consumption).toFixed(2);
 
-          this.updateTotalWaterConsumption();
+            // Optionally update the device name if needed.
+            device.device_name = matchedDevice.device_name;
+
+            // Optionally update the highest consumption device if this device's consumption is higher.
+            const deviceConsumption = parseFloat(device.totalConsumption) || 0;
+            const currentHighest = parseFloat(this.highestConsumptionValue) || 0;
+            if (deviceConsumption > currentHighest) {
+              this.highestConsumptionValue = device.totalConsumption;
+              this.highestConsumptionDevice = device.dev_eui;
+            }
+          } else {
+            console.warn(`No total consumption data found for device dev_eui: ${device.dev_eui}`);
+          }
         })
         .catch((error) => {
-          console.error(`Error fetching metrics for device ${device.id}:`, error);
+          console.error(`Error fetching total consumption for device ${device.dev_eui}:`, error);
+        });
+    },
+    // Add this function inside the methods section of your Vue component.
+    fetchDailyConsumption(device) {
+      // Compute yesterday's date in YYYY-MM-DD format.
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split("T")[0]; // e.g., "2025-02-06"
+
+      return axios
+        .get(`https://b513-119-234-9-157.ngrok-free.app/api/daily_usage/${device.id}`, {
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true"
+          }
+        })
+        .then((response) => {
+          console.log(`RAW Daily Usage Response for Device ${device.id}:`, response.data);
+
+          if (
+            response.data &&
+            response.data.daily_usage &&
+            Array.isArray(response.data.daily_usage)
+          ) {
+            // Find the record for yesterday.
+            const yesterdayData = response.data.daily_usage.find(
+              (entry) => entry.timestamp === yesterdayStr
+            );
+
+            if (yesterdayData && yesterdayData.dailyWaterUsage !== undefined) {
+              device.dailyConsumption = parseFloat(yesterdayData.dailyWaterUsage).toFixed(2);
+            } else {
+              console.warn(
+                `No daily usage data found for ${yesterdayStr} for device ${device.id}`,
+                response.data.daily_usage
+              );
+              device.dailyConsumption = "N/A";
+            }
+          } else {
+            console.warn(`Invalid daily usage response for device ${device.id}:`, response.data);
+            device.dailyConsumption = "N/A";
+          }
+          return device.dailyConsumption;
+        })
+        .catch((error) => {
+          console.error(`Error fetching daily usage for device ${device.id}:`, error);
+          device.dailyConsumption = "N/A";
+          return device.dailyConsumption;
+        });
+    },
+    fetchMonthlyConsumption(device) {
+      return axios
+        .get(`https://b513-119-234-9-157.ngrok-free.app/api/daily_usage/${device.id}`, {
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true"
+          }
+        })
+        .then((response) => {
+          console.log(`RAW Daily Usage Response for monthly consumption for Device ${device.id}:`, response.data);
+
+          if (
+            response.data &&
+            response.data.daily_usage &&
+            Array.isArray(response.data.daily_usage)
+          ) {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth(); // Note: 0-indexed (0 = January)
+
+            // Filter the daily_usage records for those in the current month
+            const monthlyRecords = response.data.daily_usage.filter((entry) => {
+              const entryDate = new Date(entry.timestamp);
+              return entryDate.getFullYear() === currentYear && entryDate.getMonth() === currentMonth;
+            });
+
+            // Sum the dailyWaterUsage values for these records
+            const monthlySum = monthlyRecords.reduce((sum, entry) => {
+              return sum + (parseFloat(entry.dailyWaterUsage) || 0);
+            }, 0);
+
+            // Update the device object (formatted to 2 decimals)
+            device.monthlyConsumption = monthlySum.toFixed(2);
+          } else {
+            console.warn(`Invalid monthly usage response for device ${device.id}:`, response.data);
+            device.monthlyConsumption = "N/A";
+          }
+          return device.monthlyConsumption;
+        })
+        .catch((error) => {
+          console.error(`Error fetching monthly usage for device ${device.id}:`, error);
+          device.monthlyConsumption = "N/A";
+          return device.monthlyConsumption;
         });
     }
+
   },
   mounted() {
     this.fetchWaterMeterData();
     this.fetchDevicesData();
+    Promise.all(this.devices.map(device => this.fetchDailyConsumption(device)))
+      .then(() => {
+        console.log("Daily consumption values updated for all devices.");
+      });
   }
 };
 </script>
@@ -481,9 +635,10 @@ export default {
 
 .grid-container {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
 }
+
 
 /* Device Card (Box) with Hover Interaction */
 .grid-item {

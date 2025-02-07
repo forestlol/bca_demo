@@ -31,8 +31,9 @@
                     </template>
                 </DashboardCard>
 
-                <DashboardCard color="#00484a" title="Highest Consumption Device" :value="`${highestConsumptionValue} m³`"
-                    :description="`Device: ${highestConsumptionDevice}`" link="/water-management/deviceFloorplan">
+                <DashboardCard color="#00484a" title="Highest Consumption Device"
+                    :value="`${highestConsumptionValue} m³`" :description="`Device: ${highestConsumptionDevice}`"
+                    link="/water-management/deviceFloorplan">
                     <template #icon>
                         <i class="fas fa-plug"></i>
                     </template>
@@ -248,9 +249,6 @@ export default {
                 }
             });
 
-            // (Optional) Prepare chart data...
-            // ... your code for dailyChartData and monthlyChartData
-
             // Update component data
             this.waterConsumptionToday = totalToday.toFixed(2);
             this.waterConsumptionMonthly = totalMonthly.toFixed(2);
@@ -260,41 +258,50 @@ export default {
             this.highestConsumptionValue = highestDevice.value.toFixed(2);
         },
 
-
         fetchDevicesData() {
             this.loadingDevices = true;
             this.devices = Object.values(this.categorizedDevices).flat();
-
             console.log("Fetching data for devices:", this.devices);
 
+            // First, fetch metrics for all devices
             Promise.all(
                 this.devices.map((device) => this.fetchMetricsForDevice(device))
             )
                 .then(() => {
                     console.log("All device metrics fetched successfully.");
-                    this.loadingDevices = false;
-
-                    // Calculate the highest consumption device based on the totalConsumption property
+                    // Now, fetch consumption differences for each device
+                    return Promise.all(
+                        this.devices.map((device) =>
+                            this.calculateConsumptionDifferences(device).then((consumptionData) => {
+                                device.dailyConsumption = consumptionData.dailyConsumption;
+                                device.monthlyConsumption = consumptionData.monthlyConsumption;
+                            })
+                        )
+                    );
+                })
+                .then(() => {
+                    // Optionally update highest consumption device here...
                     let highestDevice = { name: "N/A", value: 0 };
                     this.devices.forEach((device) => {
-                        // Parse totalConsumption as a float (if it's "N/A", fallback to 0)
                         const consumption = parseFloat(device.totalConsumption) || 0;
                         if (consumption > highestDevice.value) {
                             highestDevice = { name: device.device_name, value: consumption };
                         }
                     });
-
-                    // Update data properties for the DashboardCard
                     this.highestConsumptionDevice = highestDevice.name;
                     this.highestConsumptionValue = highestDevice.value.toFixed(2);
+
+                    this.loadingDevices = false;
                 })
                 .catch((error) => {
-                    console.error("Error fetching device metrics:", error);
+                    console.error("Error fetching device metrics or consumption differences:", error);
                     this.loadingDevices = false;
                 });
         },
+
+        // Modified to return the promise from axios
         fetchMetricsForDevice(device) {
-            axios
+            return axios
                 .get(`https://b513-119-234-9-157.ngrok-free.app/api/device_data/${device.id}`, {
                     headers: {
                         Accept: "application/json",
@@ -311,10 +318,7 @@ export default {
                         !Array.isArray(response.data.data) ||
                         response.data.data.length === 0
                     ) {
-                        console.warn(
-                            `Invalid response format for device ${device.id}:`,
-                            response.data
-                        );
+                        console.warn(`Invalid response format for device ${device.id}:`, response.data);
                         return;
                     }
 
@@ -335,7 +339,7 @@ export default {
                             .toFixed(2)
                     });
 
-                    // Compare and update the highest consumption if this device has a higher value
+                    // Optionally update highest consumption here
                     const deviceConsumption = parseFloat(device.totalConsumption) || 0;
                     const currentHighest = parseFloat(this.highestConsumptionValue) || 0;
                     if (deviceConsumption > currentHighest) {
@@ -346,8 +350,104 @@ export default {
                 .catch((error) => {
                     console.error(`Error fetching metrics for device ${device.id}:`, error);
                 });
-        }
+        },
 
+        // calculateConsumptionDifferences with a log at the beginning
+        calculateConsumptionDifferences(device) {
+            console.log("calculateConsumptionDifferences called for device:", device);
+            // Initialize the cache if it doesn't exist.
+            if (!this.consumptionCache) {
+                this.consumptionCache = {};
+            }
+            const deviceId = device.id;
+
+            // If already cached, return cached data.
+            if (this.consumptionCache[deviceId]) {
+                console.log("Using cached consumption differences for device:", deviceId);
+                return Promise.resolve(this.consumptionCache[deviceId]);
+            }
+
+            // Define timestamps for daily consumption:
+            const now = new Date();
+            const todayISO = now.toISOString();
+            const yesterdayISO = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
+            // For monthly consumption, subtract one month:
+            const lastMonthDate = new Date(now);
+            lastMonthDate.setMonth(now.getMonth() - 1);
+            const lastMonthISO = lastMonthDate.toISOString();
+
+            // Build the API URLs:
+            const dailyUrl = `http://geibms.com:8090/api/devices/${deviceId}/metrics?start=${encodeURIComponent(
+                todayISO
+            )}&end=${encodeURIComponent(yesterdayISO)}&aggregation=DAY`;
+
+            const monthlyUrl = `http://geibms.com:8090/api/devices/${deviceId}/metrics?start=${encodeURIComponent(
+                todayISO
+            )}&end=${encodeURIComponent(lastMonthISO)}&aggregation=MONTH`;
+
+            // Set up the headers (including the Bearer token)
+            const headers = {
+                Accept: "application/json",
+                "Content-Type": "application/json",
+                Authorization:
+                    "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJjaGlycHN0YWNrIiwiaXNzIjoiY2hpcnBzdGFjayIsInN1YiI6ImExNDY0OGFiLWU5ODYtNGQyMC1iNmM1LWZhOWNiMTJjYTE1NyIsInR5cCI6ImtleSJ9.o0k6sP1FZYcqg2joTOmrJsbbK26dvshhkAarLM23KNs",
+                "ngrok-skip-browser-warning": "true"
+            };
+
+            // Make both API calls concurrently.
+            return Promise.all([
+                axios.get(dailyUrl, { headers }),
+                axios.get(monthlyUrl, { headers })
+            ])
+                .then(([dailyResponse, monthlyResponse]) => {
+                    let dailyConsumption = 0,
+                        monthlyConsumption = 0;
+
+                    // Process the daily response.
+                    if (
+                        dailyResponse.data &&
+                        Array.isArray(dailyResponse.data.data) &&
+                        dailyResponse.data.data.length > 0
+                    ) {
+                        dailyConsumption = dailyResponse.data.data.reduce(
+                            (sum, entry) => sum + (parseFloat(entry.meterReading) || 0),
+                            0
+                        );
+                    } else {
+                        console.warn(`No valid daily data for device ${deviceId}`, dailyResponse.data);
+                    }
+
+                    // Process the monthly response.
+                    if (
+                        monthlyResponse.data &&
+                        Array.isArray(monthlyResponse.data.data) &&
+                        monthlyResponse.data.data.length > 0
+                    ) {
+                        monthlyConsumption = monthlyResponse.data.data.reduce(
+                            (sum, entry) => sum + (parseFloat(entry.meterReading) || 0),
+                            0
+                        );
+                    } else {
+                        console.warn(`No valid monthly data for device ${deviceId}`, monthlyResponse.data);
+                    }
+
+                    // Prepare the consumption data object.
+                    const consumptionData = {
+                        dailyConsumption: dailyConsumption.toFixed(2),
+                        monthlyConsumption: monthlyConsumption.toFixed(2)
+                    };
+
+                    // Cache the results.
+                    this.consumptionCache[deviceId] = consumptionData;
+                    console.log(`Consumption differences for device ${deviceId}:`, consumptionData);
+                    return consumptionData;
+                })
+                .catch((error) => {
+                    console.error(`Error fetching consumption data for device ${deviceId}:`, error);
+                    throw error;
+                });
+        }
     },
     mounted() {
         this.loadWaterMeterData();
