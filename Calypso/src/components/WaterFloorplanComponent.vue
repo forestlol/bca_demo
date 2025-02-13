@@ -49,19 +49,62 @@
         <section v-for="(devices, category) in categorizedDevices" :key="category" class="category">
           <h3>{{ category }}</h3>
           <div class="grid-container">
-            <div v-for="device in devices" :key="device.id" class="grid-item">
-              <!-- Summary content shown by default -->
-              <div class="summary">
-                <h4>{{ device.device_name }}</h4>
-                <p>Dev EUI: {{ device.dev_eui }}</p>
-                <p>
-                  Total Consumption:
-                  <strong>{{ device.totalConsumption || "0.00" }} m³</strong>
-                </p>
-                <p>Consumption(Daily): <strong>{{ device.dailyConsumption }} m³</strong></p>
-                <p>Consumption(Monthly): <strong>{{ device.monthlyConsumption }} m³</strong></p>
+            <!-- For Other Devices, render the combined card if available -->
+            <template v-if="category === 'Other Devices'">
+              <div v-if="combinedMain6" class="grid-item">
+                <div class="summary">
+                  <h4>{{ combinedMain6.device_name }}</h4>
+                  <p>
+                    Total Consumption:
+                    <strong>{{ combinedMain6.totalConsumption }} m³</strong>
+                  </p>
+                  <p>Consumption (Daily):
+                    <strong>{{ combinedMain6.dailyConsumption }} m³</strong>
+                  </p>
+                  <p>Consumption (Monthly):
+                    <strong>{{ combinedMain6.monthlyConsumption }} m³</strong>
+                  </p>
+                </div>
               </div>
-            </div>
+              <!-- Render the rest of Other Devices that are not part of the combined group -->
+              <div
+                v-for="device in devices.filter(d => !['8254812307000003', '8254812211000171', '8254812211000172'].includes(d.dev_eui))"
+                :key="device.id" class="grid-item">
+                <div class="summary">
+                  <h4>{{ device.device_name }}</h4>
+                  <p>Dev EUI: {{ device.dev_eui }}</p>
+                  <p>
+                    Total Consumption:
+                    <strong>{{ device.totalConsumption || "0.00" }} m³</strong>
+                  </p>
+                  <p>Consumption (Daily):
+                    <strong>{{ device.dailyConsumption }} m³</strong>
+                  </p>
+                  <p>Consumption (Monthly):
+                    <strong>{{ device.monthlyConsumption }} m³</strong>
+                  </p>
+                </div>
+              </div>
+            </template>
+            <!-- For other categories, render as before -->
+            <template v-else>
+              <div v-for="device in devices" :key="device.id" class="grid-item">
+                <div class="summary">
+                  <h4>{{ device.device_name }}</h4>
+                  <p>Dev EUI: {{ device.dev_eui }}</p>
+                  <p>
+                    Total Consumption:
+                    <strong>{{ device.totalConsumption || "0.00" }} m³</strong>
+                  </p>
+                  <p>Consumption (Daily):
+                    <strong>{{ device.dailyConsumption }} m³</strong>
+                  </p>
+                  <p>Consumption (Monthly):
+                    <strong>{{ device.monthlyConsumption }} m³</strong>
+                  </p>
+                </div>
+              </div>
+            </template>
           </div>
         </section>
       </div>
@@ -160,6 +203,34 @@ export default {
     };
   },
   computed: {
+    combinedMain6() {
+      // Define the dev_eui values for the three devices.
+      const combinedEUIs = [
+        "8254812307000003", // Kitchen
+        "8254812211000171", // Main 4
+        "8254812211000172"  // Main 6
+      ];
+      // Filter your devices array for those in the combined group.
+      const devicesToCombine = this.devices.filter(device =>
+        combinedEUIs.includes(device.dev_eui)
+      );
+
+      // Sum up the consumption values (ensure you parse the strings as numbers).
+      const totalConsumption = devicesToCombine.reduce((sum, device) =>
+        sum + (parseFloat(device.totalConsumption) || 0), 0);
+      const dailyConsumption = devicesToCombine.reduce((sum, device) =>
+        sum + (parseFloat(device.dailyConsumption) || 0), 0);
+      const monthlyConsumption = devicesToCombine.reduce((sum, device) =>
+        sum + (parseFloat(device.monthlyConsumption) || 0), 0);
+
+      // Return the combined object with your desired card title ("Main 6")
+      return {
+        device_name: "Main 6",
+        totalConsumption: totalConsumption.toFixed(2),
+        dailyConsumption: dailyConsumption.toFixed(2),
+        monthlyConsumption: monthlyConsumption.toFixed(2)
+      };
+    },
     waterMapImage() {
       return require("@/assets/WaterMap.png");
     },

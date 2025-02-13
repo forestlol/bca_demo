@@ -32,15 +32,12 @@
                 </DashboardCard>
 
                 <DashboardCard color="#00484a" title="Device Power Usage (Highest)" :value="highestDevicePowerUsage"
-                    description="Highest Power Consumption">
+                    description="Highest Power Consumption" link="/energy-management/dataLog">
                     <template #icon>
                         <i class="fas fa-plug"></i>
                     </template>
                 </DashboardCard>
-
-
-
-
+                
                 <DashboardCard color="#245d75" title="Power Efficiency" value="Normal"
                     description="Valid Until 30 June 2025">
                     <template #icon>
