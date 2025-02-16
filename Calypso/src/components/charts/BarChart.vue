@@ -28,7 +28,7 @@ export default {
                     labels: this.data.map((item) => item.label),
                     datasets: [
                         {
-                            label: "Value",
+                            label: "kWh",
                             data: this.data.map((item) => item.value),
                             backgroundColor: "rgba(54, 162, 235, 0.6)",
                         },

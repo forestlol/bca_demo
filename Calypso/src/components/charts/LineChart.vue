@@ -25,10 +25,10 @@ export default {
             this.chart = new Chart(this.$refs.chart, {
                 type: "line",
                 data: {
-                    labels: this.data.map((item) => item.time),
+                    labels: this.data.map((item) => item.label),
                     datasets: [
                         {
-                            label: "Usage",
+                            label: "kWh",
                             data: this.data.map((item) => item.value),
                             borderColor: "#36A2EB",
                             fill: true,
@@ -57,6 +57,7 @@ export default {
 <style scoped>
 .chart-container {
     position: relative;
-    width: 100%; /* Set the height to suit your layout */
+    width: 100%;
+    /* Set the height to suit your layout */
 }
 </style>

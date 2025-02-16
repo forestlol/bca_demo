@@ -12,18 +12,7 @@
         <label for="floor-selection">Choose Floor:</label>
         <select id="floor-selection" v-model="selectedFloor">
           <option>GE Canteen</option>
-          <option>Floor 2</option>
-          <option>Floor 3</option>
         </select>
-      </div>
-      <div class="toolbar-item">
-        <label>Statistical time:</label>
-        <input type="datetime-local" v-model="startDateTime" />
-        <span>to</span>
-        <input type="datetime-local" v-model="endDateTime" />
-      </div>
-      <div class="toolbar-item">
-        <button @click="fetchComparisonData">🔍 Search</button>
       </div>
     </div>
 
@@ -232,7 +221,7 @@ export default {
 
 .floorplan-image {
   display: block;
-  width: 100%;
+  width: 102%;
   height: auto;
 }
 

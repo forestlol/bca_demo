@@ -28,7 +28,7 @@
                     <tr>
                         <th>Device</th>
                         <th>Dev EUI</th>
-                        <th>Category</th>
+                        <th>Description</th>
                         <!-- Conditionally show columns based on powerUsageSortPeriod -->
                         <th v-if="powerUsageSortPeriod === 'all'">Total Consumption (m³)</th>
                         <th v-if="powerUsageSortPeriod === 'all' || powerUsageSortPeriod === 'daily'">Daily Consumption
@@ -70,12 +70,13 @@
                             <td>{{ device.device_name }}</td>
                             <td>{{ device.dev_eui }}</td>
                             <td>{{ device.category || getCategory(device) }}</td>
-                            <td>Fault</td>
+                            <td class="fault-text">Fault</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
+
     </div>
 </template>
 
@@ -197,7 +198,7 @@ export default {
             return {
                 device_name: "Main 6",
                 totalConsumption: totalConsumption.toFixed(2),
-                dailyConsumption: dailyConsumption.toFixed(2),
+                dailyConsumption: dailyConsumption,
                 monthlyConsumption: monthlyConsumption.toFixed(2)
             };
         },
@@ -231,19 +232,25 @@ export default {
                     monthlyConsumption: this.combinedMain6.monthlyConsumption
                 });
             }
-            // Append all other devices (those not in the combined group)
+            // Get an array of dev_eui's for devices in the fault log.
+            const faultDeviceEUIs = this.faultDevices.map(device => device.dev_eui);
+
+            // Append all other devices (those not in the combined group and not in the fault list)
             arr = arr.concat(
-                this.filteredDevices.filter(device => !combinedEUIs.includes(device.dev_eui))
+                this.filteredDevices.filter(device =>
+                    !combinedEUIs.includes(device.dev_eui) &&
+                    !faultDeviceEUIs.includes(device.dev_eui)
+                )
             );
 
-            // Determine which consumption field to sort by
+            // Determine which consumption field to sort by.
             let sortKey = "totalConsumption";
             if (this.powerUsageSortPeriod === "daily") {
                 sortKey = "dailyConsumption";
             } else if (this.powerUsageSortPeriod === "monthly") {
                 sortKey = "monthlyConsumption";
             }
-            // Sort in descending order (most consumption first)
+            // Sort in descending order (most consumption first).
             arr.sort((a, b) => (parseFloat(b[sortKey]) || 0) - (parseFloat(a[sortKey]) || 0));
             return arr;
         }
@@ -513,4 +520,10 @@ export default {
 .option label {
     font-weight: bold;
 }
+
+.fault-text {
+  color: red;
+  font-weight: bold;
+}
+
 </style>

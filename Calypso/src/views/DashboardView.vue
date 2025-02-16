@@ -70,18 +70,6 @@
                 <h3 class="chart-title">Active Appliances</h3>
                 <BarChart :key="selectedTime + 'active'" :data="activeAppliancesData[selectedTime]" />
             </div>
-
-            <!-- Energy Intensity -->
-            <div class="chart-card">
-                <h3 class="chart-title">Energy Intensity</h3>
-                <CircularGauge v-if="energyIntensityData[selectedTime] > 0" :data="energyIntensityData[selectedTime]" />
-            </div>
-
-            <!-- Carbon Footprint -->
-            <div class="chart-card">
-                <h3 class="chart-title">Carbon Footprint</h3>
-                <BarChart v-if="carbonFootprintData[selectedTime]?.length" :data="carbonFootprintData[selectedTime]" />
-            </div>
         </div>
     </div>
 </template>
@@ -91,14 +79,14 @@ import * as XLSX from "xlsx";
 import DonutChart from "@/components/charts/DonutChart.vue";
 import BarChart from "@/components/charts/BarChart.vue";
 import LineChart from "@/components/charts/LineChart.vue";
-import CircularGauge from "@/components/charts/CircularGauge.vue";
+import axios from "axios";
 
 export default {
-    components: { DonutChart, BarChart, LineChart, CircularGauge },
+    components: { DonutChart, BarChart, LineChart },
     data() {
         return {
             timeOptions: ["Today", "Month", "Year"],
-            selectedTime: "Today",
+            selectedTime: "Month",
             totalPowerUsage: 0,
             automationEfficiency: 0,
             costPredictedData: { Today: {}, Month: {}, Year: {} },
@@ -110,23 +98,171 @@ export default {
         };
     },
     methods: {
-        fetchExcelData() {
-            const filePath = "/assets/Simulated Data.xlsx";
-            fetch(filePath)
-                .then((response) => {
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                    return response.arrayBuffer();
-                })
-                .then((arrayBuffer) => {
-                    const workbook = XLSX.read(arrayBuffer, { type: "array" });
-                    const sheet = workbook.Sheets["Compiled"];
-                    const sheetData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                    this.processExcelData(sheetData);
-                })
-                .catch((error) => {
-                    console.error("Error reading Excel file:", error);
+        async fetchActiveAppliancesMonthlyData() {
+            try {
+                // Define the sensors you want to compare
+                const sensors = [
+                    "FCU 4", "FCU 5", "FCU 6", "FCU 7", "FCU 8",
+                    "FCU 9", "FCU 10", "FCU 11", "FCU 12", "FCU 13", "LIGHTING"
+                ];
+
+                // Set up your Google Sheets API configuration
+                const spreadsheetId = "17r_D5R-YOVhlv8aq2eYAedfV0Xk1BOTBt_-XXcc6MW0";
+                const apiKey = "AIzaSyCpfklZ6Co5YWR--V46w8MurzjucSXuauc";
+
+                // Build the batch URL for all sensor ranges. Each sensor name is used as a range.
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchGet?key=${apiKey}&ranges=${sensors
+                    .map((sensor) => encodeURIComponent(sensor))
+                    .join("&ranges=")}`;
+
+                const response = await axios.get(url);
+                const valueRanges = response.data.valueRanges;
+                console.log("Raw valueRanges:", valueRanges);
+
+                if (!valueRanges || valueRanges.length === 0) {
+                    console.warn("No sensor data found in the Google Sheet.");
+                    return;
+                }
+
+                // Get the current month and year
+                const now = new Date();
+                const currentYear = now.getFullYear();
+                const currentMonth = now.getMonth(); // 0-indexed
+
+                // Process each sensor's data
+                const sensorMonthlyValues = valueRanges.map((rangeData, index) => {
+                    const sensorName = sensors[index];
+
+                    // If there's no data or it's just headers, return 0
+                    if (!rangeData.values || rangeData.values.length < 2) {
+                        return { sensor: sensorName, value: 0 };
+                    }
+
+                    // Skip the first row (headers): ["Datetime", "MeterSN", "Daily_kWh", "Hourly_kWh"]
+                    const rows = rangeData.values.slice(1);
+
+                    // We'll store one daily_kWh reading per day (the first one we see)
+                    const dailyValues = {};
+
+                    rows.forEach((row) => {
+                        // row[0] => Datetime (e.g. "2024-12-01 00:00:00")
+                        // row[1] => MeterSN (not needed here)
+                        // row[2] => daily_kWh
+                        // row[3] => hourly_kWh (not needed here)
+                        const dateStr = row[0];
+                        const dailyKwh = parseFloat(row[3]) || 0; // Use the third column for daily_kWh
+                        const date = new Date(dateStr);
+
+                        if (
+                            date.getFullYear() === currentYear &&
+                            date.getMonth() === currentMonth
+                        ) {
+                            // Use only the date portion (e.g. "2024-12-01") as the key
+                            const dayKey = date.toISOString().split("T")[0];
+
+                            // If we haven't stored a reading for this day yet, store it now
+                            // This effectively "skips" subsequent rows on the same day
+                            if (dailyValues[dayKey] === undefined) {
+                                dailyValues[dayKey] = dailyKwh;
+                            }
+                        }
+                    });
+
+                    // Sum up the daily values for this sensor
+                    const totalMonthly = Object.values(dailyValues).reduce(
+                        (acc, val) => acc + val,
+                        0
+                    );
+
+                    return {
+                        sensor: sensorName,
+                        value: parseFloat(totalMonthly.toFixed(2)),
+                    };
                 });
+
+                // Map the results into the format expected by your BarChart:
+                // An array of objects with `label` and `value`
+                const barChartData = sensorMonthlyValues.map((item) => ({
+                    label: item.sensor,
+                    value: item.value,
+                }));
+
+                // Update the activeAppliancesData for the "Month" option
+                this.activeAppliancesData.Month = barChartData;
+                console.log("Active Appliances Monthly Data:", barChartData);
+            } catch (error) {
+                console.error("Error fetching active appliances monthly data:", error);
+            }
         },
+        async fetchMonthlyChartData() {
+            try {
+                // Set up your Google Sheets API configuration
+                const spreadsheetId = "17r_D5R-YOVhlv8aq2eYAedfV0Xk1BOTBt_-XXcc6MW0";
+                const apiKey = "AIzaSyCpfklZ6Co5YWR--V46w8MurzjucSXuauc";
+                const range = "Total_Daily_kWh"; // The tab or range with your daily data
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
+
+                // Fetch the sheet data
+                const response = await axios.get(url);
+                const sheetData = response.data.values;
+                if (!sheetData || sheetData.length < 2) {
+                    console.warn("No data found in the Google Sheet.");
+                    return;
+                }
+
+                // Skip the header row
+                const rows = sheetData.slice(1);
+
+                // Aggregate daily usage by month (formatted as "YYYY-MM")
+                const monthlyAggregation = {};
+                rows.forEach((row) => {
+                    const dateStr = row[0]; // Date column
+                    const usage = parseFloat(row[1]) || 0; // Daily kWh usage
+                    const date = new Date(dateStr);
+                    // Create month key in "YYYY-MM" format
+                    const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1)
+                        .toString()
+                        .padStart(2, "0")}`;
+                    if (!monthlyAggregation[monthKey]) {
+                        monthlyAggregation[monthKey] = 0;
+                    }
+                    monthlyAggregation[monthKey] += usage;
+                });
+
+                // Sort the month keys chronologically
+                const sortedMonths = Object.keys(monthlyAggregation).sort(
+                    (a, b) => new Date(a) - new Date(b)
+                );
+
+                // Map the sorted months into an array of { label, value } objects
+                const monthlyData = sortedMonths.map((monthKey) => ({
+                    label: monthKey,
+                    value: parseFloat(monthlyAggregation[monthKey].toFixed(2))
+                }));
+
+                // Update the usageEstimateData for the "Month" option
+                this.usageEstimateData.Month = monthlyData;
+            } catch (error) {
+                console.error("Error fetching monthly chart data:", error);
+            }
+        },
+        // fetchExcelData() {
+        //     const filePath = "/assets/Simulated Data.xlsx";
+        //     fetch(filePath)
+        //         .then((response) => {
+        //             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        //             return response.arrayBuffer();
+        //         })
+        //         .then((arrayBuffer) => {
+        //             const workbook = XLSX.read(arrayBuffer, { type: "array" });
+        //             const sheet = workbook.Sheets["Compiled"];
+        //             const sheetData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        //             this.processExcelData(sheetData);
+        //         })
+        //         .catch((error) => {
+        //             console.error("Error reading Excel file:", error);
+        //         });
+        // },
         processExcelData(sheetData) {
             const headers = sheetData[0]; // Header row (dates)
             const timeColumn = sheetData.slice(1); // Data rows (time + values)
@@ -233,14 +369,14 @@ export default {
                 { label: "This Month", value: parseFloat((monthUsage * electricityRate).toFixed(2)) },
             ];
         },
-        calculateUsageEstimate(totalUsage) {
-            const hoursElapsed = new Date().getHours();
-            const averageUsage = totalUsage / hoursElapsed;
-            return [
-                { time: "Till Now", value: parseFloat(totalUsage.toFixed(2)) },
-                { time: "Predicted", value: parseFloat((averageUsage * 24).toFixed(2)) },
-            ];
-        },
+        // calculateUsageEstimate(totalUsage) {
+        //     const hoursElapsed = new Date().getHours();
+        //     const averageUsage = totalUsage / hoursElapsed;
+        //     return [
+        //         { time: "Till Now", value: parseFloat(totalUsage.toFixed(2)) },
+        //         { time: "Predicted", value: parseFloat((averageUsage * 24).toFixed(2)) },
+        //     ];
+        // },
         calculateActiveAppliances(deviceUsage) {
             return Object.entries(deviceUsage).map(([device, value]) => ({
                 label: device,
@@ -260,7 +396,9 @@ export default {
         },
     },
     mounted() {
-        this.fetchExcelData();
+        // this.fetchExcelData();
+        this.fetchMonthlyChartData();
+        this.fetchActiveAppliancesMonthlyData();
     },
 };
 </script>
@@ -410,8 +548,11 @@ export default {
 }
 
 .chart-card canvas {
-    flex-grow: 1; /* Makes the canvas/chart fill the available space */
-    width: 100% !important; /* Ensures it stretches to the container width */
-    height: auto !important; /* Ensures proportional scaling */
+    flex-grow: 1;
+    /* Makes the canvas/chart fill the available space */
+    width: 100% !important;
+    /* Ensures it stretches to the container width */
+    height: auto !important;
+    /* Ensures proportional scaling */
 }
 </style>

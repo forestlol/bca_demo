@@ -37,7 +37,7 @@
                         <i class="fas fa-plug"></i>
                     </template>
                 </DashboardCard>
-                
+
                 <DashboardCard color="#245d75" title="Power Efficiency" value="Normal"
                     description="Valid Until 30 June 2025">
                     <template #icon>
@@ -49,14 +49,10 @@
             <!-- Middle Row -->
             <div class="middle-row">
                 <div class="card floorplan">
-                    <h3>Select Location</h3>
-                    <select v-model="selectedImage" @change="changeFloorplan">
-                        <option v-for="option in floorplanOptions" :key="option.value" :value="option.value">
-                            {{ option.label }}
-                        </option>
-                    </select>
-                    <img :src="require(`@/assets/${selectedImage}`)" :alt="selectedImage" class="floorplan-img" />
+                    <!-- Replace the image with your FloorplanComponent -->
+                    <FloorplanComponent :selectedImage="selectedImage" />
                 </div>
+
                 <div class="card power-usage-hourly">
                     <h3>Power Usage Hourly for the Day</h3>
                     <div class="chart-wrapper">
@@ -87,12 +83,15 @@ import axios from "axios";
 import DashboardCard from "@/components/DashboardCard.vue";
 import PowerHourlyChart from "../components/PowerHourlyChart.vue";
 import PowerDailyChart from "../components/PowerDailyChart.vue";
+import FloorplanComponent from '@/components/FloorplanComponent.vue';
+
 
 export default {
     components: {
         DashboardCard,
         PowerHourlyChart,
         PowerDailyChart,
+        FloorplanComponent, // Register the FloorplanComponent here
     },
     computed: {
         powerUsageToday() {
