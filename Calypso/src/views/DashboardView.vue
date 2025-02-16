@@ -236,7 +236,7 @@ export default {
 
                 // Map the sorted months into an array of { label, value } objects
                 const monthlyData = sortedMonths.map((monthKey) => ({
-                    label: monthKey,
+                    time: monthKey,
                     value: parseFloat(monthlyAggregation[monthKey].toFixed(2))
                 }));
 
