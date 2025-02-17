@@ -1,5 +1,6 @@
 <template>
     <div class="logs-container">
+        <!-- Existing Conditional Command Logs Table -->
         <h3 class="logs-header">Conditional Command Logs</h3>
         <table class="logs-table">
             <thead>
@@ -18,8 +19,10 @@
                         {{ log.state }}
                     </td>
                     <td>
-                        <span
-                            :class="{ 'green-text': log.status === 'Success', 'red-text': log.status === 'Unsuccessful' }">
+                        <span :class="{
+                            'green-text': log.status === 'Success',
+                            'red-text': log.status === 'Unsuccessful'
+                        }">
                             {{ log.status === 'Success' ? '✅' : '❌' }}
                         </span>
                     </td>
@@ -27,7 +30,36 @@
             </tbody>
         </table>
     </div>
+    <br>
+    <div class="logs-container">
+        <!-- New Conditional Logic Table -->
+        <h3 class="logs-header" style="margin-top: 30px;">Conditional Logic</h3>
+        <table class="logs-table">
+            <thead>
+                <tr>
+                    <th>Device</th>
+                    <th>Location</th>
+                    <th>Operational Settings</th>
+                    <th>Mode</th>
+                    <th>Period</th>
+                    <th>Timing</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="(item, index) in conditionalLogicData" :key="index">
+                    <td>{{ item.device }}</td>
+                    <td>{{ item.location }}</td>
+                    <td>{{ item.operationalSettings }}</td>
+                    <!-- Use a fallback of '-' if mode/timing is empty or missing -->
+                    <td>{{ item.mode || '-' }}</td>
+                    <td>{{ item.period || '-' }}</td>
+                    <td>{{ item.timing || '-' }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </template>
+
 
 <script>
 export default {
@@ -38,11 +70,94 @@ export default {
                 { date: "2024-12-03", commandType: "Mode Switch", state: "ON", status: "Success" },
                 { date: "2024-12-03", commandType: "Turn Off", state: "OFF", status: "Unsuccessful" },
             ],
+            // New data for Conditional Logic
+            conditionalLogicData: [
+                {
+                    device: "Aircon",
+                    location: "Canteen",
+                    operationalSettings: "Automatic Switch Mode - Set Temp 24 Degree",
+                    mode: "Sensor Mode",
+                    period: "Weekday",
+                    timing: "All Day",
+                },
+                {
+                    device: "Aircon",
+                    location: "Canteen",
+                    operationalSettings: "Set Temp 22 Degree - Sensor Mode (Minimal Activity)",
+                    mode: "Sensor Mode",
+                    period: "Weekday",
+                    timing: "All Day",
+                },
+                {
+                    device: "Aircon",
+                    location: "Canteen",
+                    operationalSettings: "Set Temp 24 Degree - Silent Mode (no activity half zones for more than 20mins)",
+                    mode: "Silent Mode",
+                    period: "Weekday",
+                    timing: "All Day",
+                },
+                {
+                    device: "Aircon",
+                    location: "Canteen",
+                    operationalSettings: "Set Temp 19 Degree - Busy Mode (1 aircon at a time)",
+                    mode: "Busy Mode",
+                    period: "Weekday",
+                    timing: "All Day",
+                },
+                {
+                    device: "Aircon",
+                    location: "Canteen",
+                    operationalSettings: "Set Temp 24 Degree - Sensor Mode (Minimal Activity)",
+                    mode: "Sensor Mode",
+                    period: "Weekend",
+                    timing: "All Day",
+                },
+                {
+                    device: "Aircon",
+                    location: "Canteen",
+                    operationalSettings: "Set Temp 22 Degree - Busy Mode",
+                    mode: "Busy Mode",
+                    period: "Weekend",
+                    timing: "All Day",
+                },
+                {
+                    device: "Lighting",
+                    location: "Canteen",
+                    operationalSettings: "Automatic Switch Mode - On/Off, Lights remain on for 30 mins if activity detected",
+                    mode: "",
+                    period: "Weekday",
+                    timing: "0800-1700",
+                },
+                {
+                    device: "Lighting",
+                    location: "Canteen",
+                    operationalSettings: "Lights remain on for 10 mins if activity detected",
+                    mode: "",
+                    period: "Weekday",
+                    timing: "1701-0759",
+                },
+                {
+                    device: "Lighting",
+                    location: "Canteen",
+                    operationalSettings: "Automatic Switch Mode - On/Off, Lights remain on for 10 mins if activity detected",
+                    mode: "",
+                    period: "Weekend",
+                    timing: "All Day",
+                },
+                {
+                    device: "Lighting",
+                    location: "Canteen",
+                    operationalSettings: "If no activity for more than 10 minutes, lights will turn off for the zone",
+                    mode: "",
+                    period: "Weekend",
+                    timing: "",
+                },
+            ],
         };
     },
 };
-</script>
 
+</script>
 <style scoped>
 .logs-container {
     background-color: #f5f5f5;
@@ -61,6 +176,7 @@ export default {
 .logs-table {
     width: 100%;
     border-collapse: collapse;
+    margin-bottom: 20px;
 }
 
 .logs-table th,

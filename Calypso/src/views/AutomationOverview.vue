@@ -206,6 +206,10 @@
         <div class="logs-header">
           <h3>Conditional Command Logs</h3>
           <router-link to="/automation-management/conditionalCommand" class="view-more-button">
+            Conditional Logic
+          </router-link>
+          
+          <router-link to="/automation-management/conditionalCommand" class="view-more-button">
             View More
           </router-link>
         </div>
