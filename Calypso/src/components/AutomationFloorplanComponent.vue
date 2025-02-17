@@ -334,7 +334,7 @@ export default {
     },
     async fetchTemperatureData() {
       try {
-        const response = await axios.get('https://6581-111-65-75-129.ngrok-free.app/trigger_read_all', {
+        const response = await axios.get('https://ge-aircon.ngrok.app/trigger_read_all', {
           headers: {
             'Accept': 'application/json',
             'ngrok-skip-browser-warning': 'true'

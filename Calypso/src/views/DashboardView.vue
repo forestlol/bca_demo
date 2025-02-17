@@ -31,8 +31,30 @@
                         <i class="fas fa-bolt"></i>
                     </div>
                     <div class="special-card-content">
-                        <h3>Total Power Usage</h3>
-                        <p class="value">{{ totalPowerUsage }} kWh</p>
+                        <h3>Power Usage Overview</h3>
+                        <br>
+                        <p>Current Month: <strong>{{ currentMonthPowerUsage }} kWh</strong></p>
+                        <br>
+                        <h3>Analytics</h3>
+                        <br>
+                        <p>2 Months Ago: <strong>{{ twoMonthsAgoPowerUsage }} kWh</strong></p>
+                        <p>Last Month: <strong>{{ lastMonthPowerUsage }} kWh</strong></p>
+                        <!-- New line for Current Month -->
+
+
+                        <!-- Variance uses Math.abs for both absolute & percentage -->
+                        <p>
+                            Variance:
+                            <strong>{{ Math.abs(monthToMonthVariance.absolute) }} kWh</strong>
+                            (
+                            <span :class="{
+                                'variance-green': monthToMonthVariance.percentage < 0,
+                                'variance-red': monthToMonthVariance.percentage > 0
+                            }">
+                                {{ Math.abs(monthToMonthVariance.percentage) }}%
+                            </span>
+                            )
+                        </p>
                     </div>
                 </div>
 
@@ -43,20 +65,39 @@
                     </div>
                     <div class="special-card-content">
                         <h3>Automation Efficiency</h3>
-                        <p class="value">{{ automationEfficiency }}%</p>
+                        <br>
+                        <p>
+                            Estimated Optimised Power Usage:
+                            <strong>{{ fixedOptimisedPowerUsage }} kWh</strong>
+                        </p>
+                        <p>
+                            Estimated Cost:
+                            <strong>$ {{ (fixedOptimisedPowerUsage * costRate).toFixed(2) }}</strong>
+                        </p>
+                        <p>
+                            Last Month kWh:
+                            <strong>{{ lastMonthPowerUsage }} kWh</strong>
+                        </p>
+                        <p>
+                            Efficiency Variance:
+                            <strong :class="{
+                                'variance-green': efficiencyVariance < 0,
+                                'variance-red': efficiencyVariance > 0
+                            }">
+                                {{ efficiencyVariance < 0 ? '' : '+' }}{{ Math.abs(efficiencyVariance).toFixed(3) }}%
+                                    </strong>
+                        </p>
                     </div>
                 </div>
-            </div>
-            <!-- Cost Predicted -->
-            <div class="chart-card">
-                <h3 class="chart-title">Cost Predicted</h3>
-                <DonutChart :key="selectedTime" :data="costPredictedData[selectedTime]" />
-            </div>
 
+
+            </div>
             <!-- Change in Cost -->
             <div class="chart-card">
-                <h3 class="chart-title">Change in Cost</h3>
-                <BarChart :key="selectedTime + 'change'" :data="changeInCostData[selectedTime]" />
+                <h3 class="chart-title">Cost Predicted</h3>
+                <BarChartForCostPredicted :key="selectedTime + 'change'" :data="changeInCostData[selectedTime]" />
+                <!-- 2 months ago kwh vs last month kwh vs this month kwh -->
+                <!-- optimize  -->
             </div>
 
             <!-- Usage Estimate -->
@@ -76,26 +117,64 @@
 
 <script>
 import * as XLSX from "xlsx";
-import DonutChart from "@/components/charts/DonutChart.vue";
 import BarChart from "@/components/charts/BarChart.vue";
 import LineChart from "@/components/charts/LineChart.vue";
+import BarChartForCostPredicted from "@/components/charts/BarChartForCostPredicted.vue";
 import axios from "axios";
 
 export default {
-    components: { DonutChart, BarChart, LineChart },
+    components: { BarChart, LineChart, BarChartForCostPredicted },
     data() {
         return {
             timeOptions: ["Today", "Month", "Year"],
             selectedTime: "Month",
             totalPowerUsage: 0,
-            automationEfficiency: 0,
+            automationEfficiency: 0, // Example value (could be dynamic later)
+            fixedOptimisedPowerUsage: 4000, // Fixed estimated optimised power usage (in kWh)
+            costRate: 0.28, // Cost rate in dollars per kWh
+            lastMonthPowerUsage: 0, // This will be updated via fetchMonthlyChartData
             costPredictedData: { Today: {}, Month: {}, Year: {} },
             changeInCostData: { Today: [], Month: [], Year: [] },
             usageEstimateData: { Today: [], Month: [], Year: [] },
             activeAppliancesData: { Today: [], Month: [], Year: [] },
             energyIntensityData: { Today: 0, Month: 0, Year: 0 },
             carbonFootprintData: { Today: [], Month: [], Year: [] },
+            twoMonthsAgoPowerUsage: 0,
+            currentMonthPowerUsage: 0,
+            lastMonthAutomationEfficiency: 0,
+            twoMonthsAgoAutomationEfficiency: 0,
         };
+    },
+    computed: {
+        efficiencyVariance() {
+            const fixed = this.fixedOptimisedPowerUsage;
+            if (fixed) {
+                return ((fixed - this.lastMonthPowerUsage) / fixed) * 100;
+            }
+            return 0;
+        },
+        // Computed property to calculate month-to-month variance
+        monthToMonthVariance() {
+            if (this.twoMonthsAgoPowerUsage > 0) {
+                const absolute = this.lastMonthPowerUsage - this.twoMonthsAgoPowerUsage;
+                const percentage = (absolute / this.twoMonthsAgoPowerUsage) * 100;
+                return {
+                    absolute: parseFloat(absolute.toFixed(2)),
+                    percentage: parseFloat(percentage.toFixed(2))
+                };
+            }
+            return { absolute: 0, percentage: 0 };
+        },
+        estimatedOptimisedPowerUsage() {
+            const reductionFactor = 1 - ((100 - this.automationEfficiency) / 100 * 0.1);
+            return (this.totalPowerUsage * reductionFactor).toFixed(2);
+        },
+        estimatedOptimisedCost() {
+            return (this.estimatedOptimisedPowerUsage * this.costRate).toFixed(2);
+        },
+        automationEfficiencyVariance() {
+            return this.lastMonthAutomationEfficiency - this.twoMonthsAgoAutomationEfficiency;
+        },
     },
     methods: {
         async fetchActiveAppliancesMonthlyData() {
@@ -196,13 +275,11 @@ export default {
         },
         async fetchMonthlyChartData() {
             try {
-                // Set up your Google Sheets API configuration
                 const spreadsheetId = "17r_D5R-YOVhlv8aq2eYAedfV0Xk1BOTBt_-XXcc6MW0";
                 const apiKey = "AIzaSyCpfklZ6Co5YWR--V46w8MurzjucSXuauc";
-                const range = "Total_Daily_kWh"; // The tab or range with your daily data
+                const range = "Total_Daily_kWh";
                 const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${apiKey}`;
 
-                // Fetch the sheet data
                 const response = await axios.get(url);
                 const sheetData = response.data.values;
                 if (!sheetData || sheetData.length < 2) {
@@ -210,16 +287,15 @@ export default {
                     return;
                 }
 
-                // Skip the header row
+                // Skip header row
                 const rows = sheetData.slice(1);
 
-                // Aggregate daily usage by month (formatted as "YYYY-MM")
+                // 1) Aggregate daily usage by month (formatted as "YYYY-MM")
                 const monthlyAggregation = {};
                 rows.forEach((row) => {
                     const dateStr = row[0]; // Date column
                     const usage = parseFloat(row[1]) || 0; // Daily kWh usage
                     const date = new Date(dateStr);
-                    // Create month key in "YYYY-MM" format
                     const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1)
                         .toString()
                         .padStart(2, "0")}`;
@@ -229,19 +305,78 @@ export default {
                     monthlyAggregation[monthKey] += usage;
                 });
 
-                // Sort the month keys chronologically
+                // 2) Sort the months chronologically and map to an array
                 const sortedMonths = Object.keys(monthlyAggregation).sort(
                     (a, b) => new Date(a) - new Date(b)
                 );
-
-                // Map the sorted months into an array of { label, value } objects
                 const monthlyData = sortedMonths.map((monthKey) => ({
                     time: monthKey,
-                    value: parseFloat(monthlyAggregation[monthKey].toFixed(2))
+                    value: parseFloat(monthlyAggregation[monthKey].toFixed(2)),
                 }));
 
-                // Update the usageEstimateData for the "Month" option
+                // Save monthly data for usage estimate charts (if needed)
                 this.usageEstimateData.Month = monthlyData;
+
+                // 3) Identify the current month key (YYYY-MM)
+                const now = new Date();
+                const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+                // 4) Get current month usage (it might be incomplete)
+                const currentMonthData = monthlyData.find((m) => m.time === currentMonthKey);
+                this.currentMonthPowerUsage = currentMonthData ? currentMonthData.value : 0;
+                // Use current month's usage as the total power usage (adjust if needed)
+                this.totalPowerUsage = this.currentMonthPowerUsage;
+
+                // 5) Filter out the current month to get the last two *completed* months
+                const completedMonths = monthlyData.filter((m) => m.time !== currentMonthKey);
+
+                if (completedMonths.length >= 2) {
+                    const lastMonthData = completedMonths[completedMonths.length - 1];
+                    const twoMonthsAgoData = completedMonths[completedMonths.length - 2];
+                    this.lastMonthPowerUsage = lastMonthData.value;
+                    this.twoMonthsAgoPowerUsage = twoMonthsAgoData.value;
+                } else if (completedMonths.length === 1) {
+                    this.lastMonthPowerUsage = completedMonths[0].value;
+                    this.twoMonthsAgoPowerUsage = 0;
+                } else {
+                    this.lastMonthPowerUsage = 0;
+                    this.twoMonthsAgoPowerUsage = 0;
+                }
+
+                // 6) Derive automation efficiency percentages.
+                // For example, assume that a baseline of 1000 kWh represents optimal usage (100% efficiency).
+                // Lower usage means higher efficiency. (This formula is arbitrary—adjust as needed.)
+                const baseline = 1000;
+                this.lastMonthAutomationEfficiency = this.lastMonthPowerUsage
+                    ? parseFloat((((baseline - this.lastMonthPowerUsage) / baseline) * 100).toFixed(2))
+                    : 0;
+                this.twoMonthsAgoAutomationEfficiency = this.twoMonthsAgoPowerUsage
+                    ? parseFloat((((baseline - this.twoMonthsAgoPowerUsage) / baseline) * 100).toFixed(2))
+                    : 0;
+                // For current automation efficiency, we use last month's efficiency as an example.
+                this.automationEfficiency = this.lastMonthAutomationEfficiency;
+
+                // 7) Update the cost predicted chart data using the cost rate ($0.28 per kWh)
+                this.changeInCostData.Month = [
+                    {
+                        label: "2 Months Ago",
+                        usage: this.twoMonthsAgoPowerUsage,
+                        cost: parseFloat((this.twoMonthsAgoPowerUsage * this.costRate).toFixed(2)),
+                        value: parseFloat((this.twoMonthsAgoPowerUsage * this.costRate).toFixed(2)),
+                    },
+                    {
+                        label: "Last Month",
+                        usage: this.lastMonthPowerUsage,
+                        cost: parseFloat((this.lastMonthPowerUsage * this.costRate).toFixed(2)),
+                        value: parseFloat((this.lastMonthPowerUsage * this.costRate).toFixed(2)),
+                    },
+                    {
+                        label: "Current Month",
+                        usage: this.currentMonthPowerUsage,
+                        cost: parseFloat((this.currentMonthPowerUsage * this.costRate).toFixed(2)),
+                        value: parseFloat((this.currentMonthPowerUsage * this.costRate).toFixed(2)),
+                    },
+                ];
             } catch (error) {
                 console.error("Error fetching monthly chart data:", error);
             }
@@ -433,7 +568,7 @@ export default {
 
 .cards-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 20px;
 }
 
@@ -495,7 +630,7 @@ export default {
     display: flex;
     flex-direction: row;
     align-items: center;
-    padding: 20px 30px;
+    padding: 20px 15px;
     background: linear-gradient(135deg, #1e293b, #304a75);
     color: #ffffff;
     border-radius: 10px;
@@ -554,5 +689,13 @@ export default {
     /* Ensures it stretches to the container width */
     height: auto !important;
     /* Ensures proportional scaling */
+}
+
+.variance-green {
+    color: lightgreen;
+}
+
+.variance-red {
+    color: #FF7F7F;
 }
 </style>

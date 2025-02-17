@@ -309,7 +309,7 @@ export default {
 
       const port = this.fcuToPort[this.selectedFcu]; // Get the port for the selected FCU
       const value = parseInt(this.setTemperature, 10) * 10; // Ensure the value is an integer
-      const apiUrl = 'https://6581-111-65-75-129.ngrok-free.app/trigger_set_register';
+      const apiUrl = 'https://ge-aircon.ngrok.app/trigger_set_register';
 
       const payload = {
         port: port,
@@ -416,7 +416,7 @@ export default {
         ],
       };
 
-      const apiUrl = 'https://6581-111-65-75-129.ngrok-free.app/trigger_set_register';
+      const apiUrl = 'https://ge-aircon.ngrok.app/trigger_set_register';
 
       // Post to the API
       axios
@@ -464,7 +464,7 @@ export default {
         ],
       };
 
-      const apiUrl = 'https://6581-111-65-75-129.ngrok-free.app/trigger_set_register';
+      const apiUrl = 'https://ge-aircon.ngrok.app/trigger_set_register';
 
       // Make the API call
       axios
@@ -522,7 +522,7 @@ export default {
     },
     async fetchTemperatureData() {
       try {
-        const response = await axios.get('https://6581-111-65-75-129.ngrok-free.app/trigger_read_all', {
+        const response = await axios.get('https://ge-aircon.ngrok.app/trigger_read_all', {
           headers: {
             'Accept': 'application/json',
             'ngrok-skip-browser-warning': 'true'

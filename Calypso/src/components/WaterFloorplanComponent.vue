@@ -438,7 +438,7 @@ export default {
 
     fetchMetricsForDevice(device) {
       return axios
-        .get("https://b513-119-234-9-157.ngrok-free.app/api/total_consumption", {
+        .get("https://ge-powermeter.ngrok.app/api/total_consumption", {
           headers: {
             Accept: "application/json",
             "Content-Type": "application/json",
@@ -493,7 +493,7 @@ export default {
       const yesterdayStr = yesterday.toISOString().split("T")[0]; // e.g., "2025-02-06"
 
       return axios
-        .get(`https://b513-119-234-9-157.ngrok-free.app/api/daily_usage/${device.id}`, {
+        .get(`https://ge-powermeter.ngrok.app/api/daily_usage/${device.id}`, {
           headers: {
             Accept: "application/json",
             "Content-Type": "application/json",
@@ -536,7 +536,7 @@ export default {
     },
     fetchMonthlyConsumption(device) {
       return axios
-        .get(`https://b513-119-234-9-157.ngrok-free.app/api/daily_usage/${device.id}`, {
+        .get(`https://ge-powermeter.ngrok.app/api/daily_usage/${device.id}`, {
           headers: {
             Accept: "application/json",
             "Content-Type": "application/json",
