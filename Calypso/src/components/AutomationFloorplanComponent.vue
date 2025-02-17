@@ -38,7 +38,7 @@
           <p v-if="tooltip.onoffstate !== undefined">On/Off State: {{ tooltip.onoffstate }}</p>
           <p v-if="tooltip.signalstrength !== undefined">Signal Strength: {{ tooltip.signalstrength }}</p>
           <p v-if="tooltip.temperature !== undefined">Current Temperature: {{ tooltip.temperature }}°C</p>
-          <p v-if="tooltip.setpoint !== undefined">Temperature Setpoint: {{ tooltip.setpoint }}°C</p>
+          <p v-if="tooltip.setpoint !== undefined">Set Temperature: {{ tooltip.setpoint }}°C</p>
           <p v-if="tooltip.sensorlightstate !== undefined">Light State: {{ tooltip.sensorlightstate }}</p>
           <p v-if="tooltip.totalActivities !== undefined">Total Activities: {{ tooltip.totalActivities }}</p>
         </div>
