@@ -147,7 +147,7 @@
             <div class="control-card">
               <div class="card-header">
                 <i class="fas fa-temperature-low"></i>
-                <span>Temperature simulation</span>
+                <span>Room Temperature</span>
               </div>
               <div class="card-content">
                 <div class="room-temp">
@@ -319,7 +319,7 @@ export default {
         port: port,
         register_data: [
           {
-            name: 'Temperature Setpoint',
+            name: 'Set Temperature',
             value: value,
           },
         ],
