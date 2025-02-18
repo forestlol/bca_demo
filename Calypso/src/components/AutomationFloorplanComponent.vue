@@ -351,7 +351,11 @@ export default {
           'COM7': 'FCU 6',
           'COM8': 'FCU 7',
           'COM9': 'FCU 8',
-          'COM10': 'FCU 9'
+          'COM11' : 'FCU 10',
+          'COM10': 'FCU 9',
+          'COM12' : 'FCU 11',
+          'COM13' : 'FCU 12',
+          'COM14' : 'FCU 13'
         };
 
         data.forEach(item => {

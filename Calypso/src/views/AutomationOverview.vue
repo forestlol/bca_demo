@@ -286,7 +286,7 @@ export default {
         'FCU 6': 'COM7',
         'FCU 7': 'COM8',
         'FCU 8': 'COM9',
-        'FCU 9': 'COM10',
+        'FCU 9': 'COM5',
         'FCU 10': 'COM6', // Duplicated from FCU 6
         'FCU 11': 'COM7', // Duplicated from FCU 7
         'FCU 12': 'COM8', // Duplicated from FCU 8

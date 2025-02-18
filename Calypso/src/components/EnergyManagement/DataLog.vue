@@ -186,7 +186,7 @@
         const meterSNs = Object.keys(meterMap);
   
         axios
-          .get("https://geibms.com/message_history")
+          .get("http://157.230.240.216:5000/message_history")
           .then((response) => {
             const rawData = response.data.message_history;
             const now = new Date();
