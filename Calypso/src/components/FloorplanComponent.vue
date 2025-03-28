@@ -8,12 +8,28 @@
           Auto refresh
         </label>
       </div>
+
       <div class="toolbar-item">
         <label for="floor-selection">Choose Floor:</label>
         <select id="floor-selection" v-model="selectedFloor">
           <option>GE Canteen</option>
         </select>
       </div>
+
+      <!-- NEW: Start/End date pickers -->
+      <div class="toolbar-item">
+        <label for="start-date">Start Date:</label>
+        <input type="date" id="start-date" v-model="startDate" />
+      </div>
+      <div class="toolbar-item">
+        <label for="end-date">End Date:</label>
+        <input type="date" id="end-date" v-model="endDate" />
+      </div>
+
+      <!-- Button to trigger data fetch
+      <div class="toolbar-item">
+        <button @click="fetchComparisonData">Refresh</button>
+      </div> -->
     </div>
 
     <!-- Title Bar -->
@@ -27,13 +43,15 @@
       <div v-for="(circle, index) in circles" :key="circle.id" class="circle"
         :style="{ top: circle.y + '%', left: circle.x + '%' }" @mouseenter="showValue(index, $event)"
         @mouseleave="hideValue"></div>
-      <div v-if="tooltip.visible" class="value-tooltip" :style="{ top: `${tooltip.y}px`, left: `${tooltip.x}px` }">
+
+      <div v-if="tooltip.visible" class="value-tooltip" :style="{ top: tooltip.y + 'px', left: tooltip.x + 'px' }">
         <h5>{{ tooltip.title }}</h5>
         <p>Usage (Daily): {{ tooltip.dailyUsage }} kWh</p>
       </div>
     </div>
   </div>
 </template>
+
 
 <script>
 import axios from "axios";
@@ -45,6 +63,8 @@ export default {
     yesterday.setDate(now.getDate() - 1);
 
     return {
+      startDate: "", // <-- new
+      endDate: "",   // <-- new
       autoRefresh: false,
       selectedFloor: "GE Canteen",
       startDateTime: yesterday.toISOString().slice(0, 16),
@@ -75,23 +95,36 @@ export default {
   },
   methods: {
     fetchComparisonData() {
-      const meterSNs = [
-        "24112209220004", "24060404690001", "24060410030004",
-        "24061901790001", "24060410030003", "24060410030002",
-        "24060404690002", "24112209220002", "24112209220003",
-        "24112209220006", "24112209220005"
-      ];
+      // Create base URL
+      let url = "https://geibms.com/message_history";
 
-      const now = new Date();
-      const startTime = new Date(now);
-      startTime.setHours(0, 0, 0, 0); // Start of today
-      const endTime = new Date(now); // Current time today
+      // If the user picked both startDate and endDate, append query params
+      if (this.startDate && this.endDate) {
+        // Convert "YYYY-MM-DD" -> "YYYYMMDD"
+        const startParam = this.startDate.replace(/-/g, "");
+        const endParam = this.endDate.replace(/-/g, "");
+        url += `?start=${startParam}&end=${endParam}`;
+      }
 
-      axios.get("https://geibms.com/message_history")
+      // Now fetch data from this (possibly modified) URL
+      axios
+        .get(url)
         .then((response) => {
           const rawData = response.data.message_history;
 
           // Filter and process data for each meterSN
+          const meterSNs = [
+            "24112209220004", "24060404690001", "24060410030004",
+            "24061901790001", "24060410030003", "24060410030002",
+            "24060404690002", "24112209220002", "24112209220003",
+            "24112209220006", "24112209220005"
+          ];
+
+          const now = new Date();
+          const startTime = new Date(now);
+          startTime.setHours(0, 0, 0, 0);
+          const endTime = new Date(now);
+
           const aggregatedDataBySensor = {};
 
           meterSNs.forEach((meterSN) => {
@@ -104,7 +137,7 @@ export default {
                   entryTime <= endTime
                 );
               })
-              .sort((a, b) => new Date(a.datatime) - new Date(b.datatime)) // Sort data chronologically
+              .sort((a, b) => new Date(a.datatime) - new Date(b.datatime))
               .map((entry) => {
                 const time = this.parseCustomDatetime(entry.datatime);
                 return { time, value: parseFloat(entry.EPI) };
@@ -113,16 +146,14 @@ export default {
             // Calculate today's usage
             let dailyUsage = 0;
             for (let i = 1; i < sensorData.length; i++) {
-              const current = sensorData[i].value;
-              const previous = sensorData[i - 1].value;
-              let difference = current - previous;
+              let difference = sensorData[i].value - sensorData[i - 1].value;
 
               // Ignore outliers
               if (difference < -50 || difference > 50) {
                 difference = 0;
               }
 
-              // Special transformation for Lighting Meter
+              // Example transformation for a special meter
               if (meterSN === "24112209220004") {
                 difference = (difference / 10) * 48;
               }
@@ -130,16 +161,16 @@ export default {
               dailyUsage += Math.abs(difference);
             }
 
-            aggregatedDataBySensor[meterSN] = dailyUsage.toFixed(2); // Store the aggregated daily usage
+            aggregatedDataBySensor[meterSN] = dailyUsage.toFixed(2);
           });
 
-          // Update circle data with daily usage values
+          // Update circle data with daily usage
           this.circles.forEach((circle) => {
             const meterUsage = aggregatedDataBySensor[circle.meterId];
-            circle.dailyUsage = meterUsage ? meterUsage : "0.00"; // Default to 0.00 if no data
+            circle.dailyUsage = meterUsage ? meterUsage : "0.00";
           });
 
-          console.log("Updated Circle Data for Today:", this.circles);
+          console.log("Updated Circle Data:", this.circles);
         })
         .catch((error) => console.error("Error fetching comparison data:", error));
     },
@@ -178,6 +209,15 @@ export default {
       this.tooltip.visible = false;
     },
   },
+  watch: {
+    startDate() {
+      this.fetchComparisonData();
+    },
+    // Watch endDate changes
+    endDate() {
+      this.fetchComparisonData();
+    },
+  }
 };
 
 </script>
@@ -203,7 +243,14 @@ export default {
 
 .toolbar-item {
   margin: 5px;
+  display: flex;
+  align-items: center;
 }
+
+.toolbar-item label {
+  margin-right: 5px;
+}
+
 
 .heatmap-title-bar {
   background-color: rgba(184, 184, 184, 0.1);
