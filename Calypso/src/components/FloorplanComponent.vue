@@ -88,12 +88,78 @@ export default {
         title: "",
         dailyUsage: 0,
       },
+      fcuToPort: {
+        "FCU 4": "COM5",
+        "FCU 5": "COM6",
+        "FCU 6": "COM7",
+        "FCU 7": "COM8",
+        "FCU 8": "COM9",
+        "FCU 9": "COM10",
+        "FCU 10": "COM6", // Duplicated from FCU 6
+        "FCU 11": "COM7", // Duplicated from FCU 7
+        "FCU 12": "COM8", // Duplicated from FCU 8
+        "FCU 13": "COM9"  // Duplicated from FCU 9
+      }
     };
   },
   mounted() {
     this.fetchComparisonData(); // Trigger fetch on page load
+    this.fetchAllTemperatureData();
+    // Optionally, set up auto refresh if enabled:
+    if (this.autoRefresh) {
+      setInterval(() => {
+        this.fetchAllTemperatureData();
+      }, 60000); // refresh every minute
+    }
   },
   methods: {
+    fetchAllTemperatureData() {
+      // Fetch temperature data for all FCUs from the aircon API.
+      axios
+        .get("https://ge-aircon.ngrok.app/trigger_read_all", {
+          headers: {
+            Accept: "application/json",
+            "ngrok-skip-browser-warning": "true"
+          }
+        })
+        .then((response) => {
+          const data = response.data;
+          if (!Array.isArray(data)) {
+            console.error("Unexpected response format:", data);
+            return;
+          }
+          // For each FCU circle, match using the fcuToPort mapping.
+          this.circles.forEach((circle) => {
+            const port = this.fcuToPort[circle.title];
+            if (!port) return;
+            // Find the FCU data corresponding to this port.
+            const fcuData = data.find((item) => item.port === port);
+            if (fcuData && Array.isArray(fcuData.data)) {
+              // Assume the temperature reading is at address 8.
+              const tempData = fcuData.data.find((d) => d.address === 8);
+              if (tempData) {
+                circle.temperature = tempData.value;
+              } else {
+                console.warn(`No temperature data (address 8) for ${circle.title}`);
+              }
+            } else {
+              console.warn(`No data found for port ${port} (${circle.title})`);
+            }
+          });
+          console.log("Updated circles with temperature:", this.circles);
+        })
+        .catch((error) => {
+          console.error("Error fetching temperature data:", error);
+        });
+    },
+    // This method returns a color based on the temperature value.
+    // Temperatures ≥26°C return red, ≤22°C return green, and in between return yellow.
+    getColorForTemperature(temp) {
+      if (temp == null || isNaN(temp)) return "gray";
+      if (temp >= 26) return "red";
+      if (temp <= 22) return "green";
+      return "yellow";
+    },
     fetchComparisonData() {
       // Create base URL
       let url = "https://geibms.com/message_history";
@@ -204,6 +270,7 @@ export default {
       this.tooltip.y = event.clientY + 15;
       this.tooltip.title = this.circles[index].title;
       this.tooltip.dailyUsage = this.circles[index].dailyUsage;
+      this.tooltip.temperature = this.circles[index].temperature;
     },
     hideValue() {
       this.tooltip.visible = false;

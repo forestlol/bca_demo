@@ -329,9 +329,7 @@ export default {
 
                     if (matchedDevice) {
                         // Update the device's totalConsumption using the value from the API.
-                        device.totalConsumption = parseFloat(matchedDevice.total_consumption).toFixed(2);
-
-                        // Optionally update the device name if needed.
+                        device.totalConsumption = (parseFloat(matchedDevice.total_consumption) / 1000).toFixed(2);
                         device.device_name = matchedDevice.device_name;
 
                         // Optionally update the highest consumption device if this device's consumption is higher.
@@ -378,14 +376,13 @@ export default {
                         );
 
                         if (yesterdayData && yesterdayData.dailyWaterUsage !== undefined) {
-                            device.dailyConsumption = parseFloat(yesterdayData.dailyWaterUsage).toFixed(2);
+                            // Convert daily usage to cubic meters.
+                            device.dailyConsumption = (parseFloat(yesterdayData.dailyWaterUsage) / 1000).toFixed(2);
                         } else {
-                            console.warn(
-                                `No daily usage data found for ${yesterdayStr} for device ${device.id}`,
-                                response.data.daily_usage
-                            );
+                            console.warn(`No daily usage data found for ${yesterdayStr} for device ${device.id}`);
                             device.dailyConsumption = "0";
                         }
+
                     } else {
                         console.warn(`Invalid daily usage response for device ${device.id}:`, response.data);
                         device.dailyConsumption = "0";
@@ -417,21 +414,21 @@ export default {
                     ) {
                         const now = new Date();
                         const currentYear = now.getFullYear();
-                        const currentMonth = now.getMonth(); // Note: 0-indexed (0 = January)
+                        const currentMonth = now.getMonth(); // 0-indexed: 0 = January
 
-                        // Filter the daily_usage records for those in the current month
+                        // Filter the daily_usage records for the current month.
                         const monthlyRecords = response.data.daily_usage.filter((entry) => {
                             const entryDate = new Date(entry.timestamp);
                             return entryDate.getFullYear() === currentYear && entryDate.getMonth() === currentMonth;
                         });
 
-                        // Sum the dailyWaterUsage values for these records
+                        // Sum the dailyWaterUsage values for these records.
                         const monthlySum = monthlyRecords.reduce((sum, entry) => {
                             return sum + (parseFloat(entry.dailyWaterUsage) || 0);
                         }, 0);
 
-                        // Update the device object (formatted to 2 decimals)
-                        device.monthlyConsumption = monthlySum.toFixed(2);
+                        // Divide by 1000 to convert to cubic meters and update the device object.
+                        device.monthlyConsumption = (monthlySum / 1000).toFixed(2);
                     } else {
                         console.warn(`Invalid monthly usage response for device ${device.id}:`, response.data);
                         device.monthlyConsumption = "N/A";
@@ -444,6 +441,7 @@ export default {
                     return device.monthlyConsumption;
                 });
         }
+
     },
     mounted() {
         this.fetchDevicesData();
@@ -522,8 +520,7 @@ export default {
 }
 
 .fault-text {
-  color: red;
-  font-weight: bold;
+    color: red;
+    font-weight: bold;
 }
-
 </style>
