@@ -1,57 +1,63 @@
 <template>
-    <div class="fault-calling-container">
-      <!-- Top Section -->
-      <div class="top-section">
-        <h3 class="title">Device Fault Log (To Set in Settings)</h3>
-        <button class="download-button" @click="downloadSpreadsheet">Download Spreadsheet</button>
-      </div>
-  
-      <!-- Fault Log Table -->
-      <table class="fault-log-table">
-        <thead>
-          <tr>
-            <th>Meter Name</th>
-            <th>Description</th>
-            <th>Location</th>
-            <th>Status</th>
-            <th>Time</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(fault, index) in faultLogs" :key="index">
-            <td>{{ fault.meterName }}</td>
-            <td>{{ fault.description }}</td>
-            <td>{{ fault.location }}</td>
-            <td :class="{ 'green-text': fault.status === 'Resolved', 'red-text': fault.status === 'Unresolved' }">
-              {{ fault.status }}
-            </td>
-            <td>{{ fault.time }}</td>
-          </tr>
-        </tbody>
-      </table>
-  
-      <!-- Conditional Logic Section -->
-      <div class="conditional-logic-section">
-        <h4>Conditional Logic for Alerts</h4>
-        <p>Select how to receive alerts:</p>
-        <div class="logic-options">
-          <label>
-            <input type="checkbox" v-model="alertMethods.email" />
-            Send Email
-          </label>
-          <label>
-            <input type="checkbox" v-model="alertMethods.call" />
-            Make Call
-          </label>
-          <label>
-            <input type="checkbox" v-model="alertMethods.whatsapp" />
-            Send WhatsApp
-          </label>
-        </div>
-        <button @click="saveAlertSettings">Save Alert Settings</button>
-      </div>
+  <div class="fault-calling-container">
+    <!-- Back Button -->
+    <router-link to="/automation-management" class="back-button">
+      <i class="fas fa-arrow-left"></i> Back
+    </router-link>
+
+    <!-- Top Section -->
+    <div class="top-section">
+      <h3 class="title">Device Fault Log (To Set in Settings)</h3>
+      <button class="download-button" @click="downloadSpreadsheet">Download Spreadsheet</button>
     </div>
-  </template>
+
+    <!-- Fault Log Table -->
+    <table class="fault-log-table">
+      <thead>
+        <tr>
+          <th>Meter Name</th>
+          <th>Description</th>
+          <th>Location</th>
+          <th>Status</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(fault, index) in faultLogs" :key="index">
+          <td>{{ fault.meterName }}</td>
+          <td>{{ fault.description }}</td>
+          <td>{{ fault.location }}</td>
+          <td :class="{ 'green-text': fault.status === 'Resolved', 'red-text': fault.status === 'Unresolved' }">
+            {{ fault.status }}
+          </td>
+          <td>{{ fault.time }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Conditional Logic Section -->
+    <div class="conditional-logic-section">
+      <h4>Conditional Logic for Alerts</h4>
+      <p>Select how to receive alerts:</p>
+      <div class="logic-options">
+        <label>
+          <input type="checkbox" v-model="alertMethods.email" />
+          Send Email
+        </label>
+        <label>
+          <input type="checkbox" v-model="alertMethods.call" />
+          Make Call
+        </label>
+        <label>
+          <input type="checkbox" v-model="alertMethods.whatsapp" />
+          Send WhatsApp
+        </label>
+      </div>
+      <button @click="saveAlertSettings">Save Alert Settings</button>
+    </div>
+  </div>
+</template>
+
 <script>
 export default {
   data() {
@@ -92,7 +98,6 @@ export default {
       alert("Spreadsheet download triggered!");
     },
     saveAlertSettings() {
-      // Save alert settings (logic for email, call, and WhatsApp alert configuration)
       const selectedMethods = Object.keys(this.alertMethods)
         .filter((key) => this.alertMethods[key])
         .map((method) => method.charAt(0).toUpperCase() + method.slice(1));
@@ -105,12 +110,29 @@ export default {
   },
 };
 </script>
+
 <style scoped>
 .fault-calling-container {
   padding: 20px;
   background-color: #f5f5f5;
   color: black;
   border-radius: 10px;
+}
+
+.back-button {
+  display: inline-block;
+  margin-bottom: 10px;
+  font-size: 16px;
+  text-decoration: none;
+  color: #007bff;
+}
+
+.back-button i {
+  margin-right: 5px;
+}
+
+.back-button:hover {
+  color: #0056b3;
 }
 
 .top-section {
@@ -202,4 +224,3 @@ button:hover {
   background-color: #0056b3;
 }
 </style>
-  

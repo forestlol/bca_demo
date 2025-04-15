@@ -93,48 +93,48 @@ export default {
             devices: [], // This will be populated by your fetchDevicesData method.
             categorizedDevices: {
                 "Cooling Tower": [
-                    { id: 1, dev_eui: "8254812403000465", device_name: "Cooling Tower 1", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 2, dev_eui: "8254812403000462", device_name: "Cooling Tower 2", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 3, dev_eui: "8254812403000482", device_name: "Cooling Tower 3", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 4, dev_eui: "8254812403000447", device_name: "Cooling Tower 4", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 5, dev_eui: "8254812403000653", device_name: "Cooling Tower 5", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" }
+                    { id: 1, dev_eui: "8254812403000465", device_name: "WM04- Cooling Tower 1", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 2, dev_eui: "8254812403000462", device_name: "WM05- Cooling Tower 2", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 3, dev_eui: "8254812403000482", device_name: "WM06- Cooling Tower 3", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 4, dev_eui: "8254812403000447", device_name: "WM07- Cooling Tower 4", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 5, dev_eui: "8254812403000653", device_name: "WM08- Cooling Tower 5", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" }
                 ],
                 "Female Toilet": [
-                    { id: 6, dev_eui: "8254812403000643", device_name: "Female Toilet 4", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 7, dev_eui: "8254812312000003", device_name: "Female Toilet 1", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 12, dev_eui: "8254812403000644", device_name: "Female Toilet 3", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" }
+                    { id: 6, dev_eui: "8254812403000643", device_name: "WM21-Female Toilet-Bay 1 L2", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 7, dev_eui: "8254812312000003", device_name: "WM18-Female Toilet-Admin Block", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 12, dev_eui: "8254812403000644", device_name: "WM19-Female Toilet 2-Admin Block", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" }
                 ],
                 "Male Toilet": [
-                    { id: 8, dev_eui: "8254812403000652", device_name: "Male Toilet 5", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 9, dev_eui: "8254812312000004", device_name: "Male Toilet 2", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 18, dev_eui: "8254812403000659", device_name: "Male Toilet 6", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 28, dev_eui: "8254812307000002", device_name: "Male Toilet 7", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 25, dev_eui: "8254812211000169", device_name: "Male Toilet 8", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" }
+                    { id: 8, dev_eui: "8254812403000652", device_name: "WM22-Male Toilet-Bay 1 L2", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 9, dev_eui: "8254812312000004", device_name: "WM17-Male Toilet-Admin Block", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 18, dev_eui: "8254812403000659", device_name: "WM23-Male Toilet- Bay 8", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 28, dev_eui: "8254812307000002", device_name: "WM23-Male Toilet-Rotor Bay", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 25, dev_eui: "8254812211000169", device_name: "WM20-Male Toilet 2-Beside Canteen", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" }
                 ],
                 "FPI": [
-                    { id: 10, dev_eui: "8254812403000632", device_name: "FPI-8", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 13, dev_eui: "8254812307000010", device_name: "FPI-6", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 14, dev_eui: "8254812403000528", device_name: "FPI-2", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 15, dev_eui: "8254812403000578", device_name: "FPI-4", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 16, dev_eui: "8254812307000004", device_name: "FPI-10", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 19, dev_eui: "8254812401000105", device_name: "FPI-5", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 20, dev_eui: "8254812307000005", device_name: "FPI-7", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 21, dev_eui: "8254812307000007", device_name: "FPI-9", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" }
+                    { id: 10, dev_eui: "8254812403000632", device_name: "WM14-FPI-8", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 13, dev_eui: "8254812307000010", device_name: "WM12-FPI-6", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 14, dev_eui: "8254812403000528", device_name: "WM09-FPI-2", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 15, dev_eui: "8254812403000578", device_name: "WM10-FPI-4", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 16, dev_eui: "8254812307000004", device_name: "WM16-FPI-10", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 19, dev_eui: "8254812401000105", device_name: "WM11-FPI-5", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 20, dev_eui: "8254812307000005", device_name: "WM13-FPI-7", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 21, dev_eui: "8254812307000007", device_name: "WM15-FPI-9", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" }
                 ],
                 "Steam Clean": [
-                    { id: 11, dev_eui: "8254812211000168", device_name: "Steam Clean 3", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 17, dev_eui: "8254812403000432", device_name: "Steam Clean 2", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" }
+                    { id: 11, dev_eui: "8254812211000168", device_name: "WM27-Steam Clean 3", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 17, dev_eui: "8254812403000432", device_name: "WM26-Steam Clean 2", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" }
                 ],
                 "Scrubber": [
-                    { id: 26, dev_eui: "8254812307000008", device_name: "Scrubber 2", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 27, dev_eui: "8254812307000014", device_name: "Scrubber 1", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" }
+                    { id: 26, dev_eui: "8254812307000008", device_name: "WM25-Scrubber 2", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 27, dev_eui: "8254812307000014", device_name: "WM24-Scrubber 1", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" }
                 ],
                 "Other Devices": [
-                    { id: 22, dev_eui: "8254812401000104", device_name: "Salt Bath", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 23, dev_eui: "8254812307000009", device_name: "Chemical Line 1", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 24, dev_eui: "8254812307000003", device_name: "Kitchen", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 29, dev_eui: "8254812211000171", device_name: "Main 4", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
-                    { id: 30, dev_eui: "8254812211000172", device_name: "Main 6", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" }
+                    { id: 22, dev_eui: "8254812401000104", device_name: "WM28- Salt Bath", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 23, dev_eui: "8254812307000009", device_name: "WM29-Chemical Line ", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 24, dev_eui: "8254812307000003", device_name: "WM03- Main Pipe- Rotor Bay", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 29, dev_eui: "8254812211000171", device_name: "WM02- Main Pipe Outgoing Canteen/Bays", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" },
+                    { id: 30, dev_eui: "8254812211000172", device_name: "WM01- Main Pipe Incoming PUB", meterReading: "N/A", batteryVoltage: "N/A", measureMode: "N/A", valveStatus: "N/A" }
                 ]
             },
             loadingDevices: false
@@ -159,7 +159,7 @@ export default {
             // For each device, if it's in the combined group, return "Main 6"
             const locations = this.devices.map(device => {
                 return combinedEUIs.includes(device.dev_eui)
-                    ? "Main 6"
+                    ? "WM01- Main Pipe Incoming PUB"
                     : device.device_name;
             });
             // Return only unique values
@@ -171,7 +171,7 @@ export default {
             return this.devices.filter(device => {
                 // Map devices in the combined group to "Main 6" for filtering
                 const location = combinedEUIs.includes(device.dev_eui)
-                    ? "Main 6"
+                    ? "WM01- Main Pipe Incoming PUB"
                     : device.device_name;
                 return location === this.selectedLocation;
             });
@@ -196,7 +196,7 @@ export default {
                 (sum, device) => sum + (parseFloat(device.monthlyConsumption) || 0), 0
             );
             return {
-                device_name: "Main 6",
+                device_name: "WM01- Main Pipe Incoming PUB",
                 totalConsumption: totalConsumption.toFixed(2),
                 dailyConsumption: dailyConsumption,
                 monthlyConsumption: monthlyConsumption.toFixed(2)
@@ -221,7 +221,7 @@ export default {
             let arr = [];
             const combinedEUIs = ["8254812307000003", "8254812211000171", "8254812211000172"];
             // Only add the combined row if no location filter is applied or if the filter is "Main 6"
-            if ((!this.selectedLocation || this.selectedLocation === "Main 6") && this.combinedMain6) {
+            if ((!this.selectedLocation || this.selectedLocation === "WM01- Main Pipe Incoming PUB") && this.combinedMain6) {
                 arr.push({
                     id: "combined",
                     device_name: this.combinedMain6.device_name,
@@ -312,7 +312,6 @@ export default {
                 .then((response) => {
                     console.log(`RAW Response for Total Consumption:`, response.data);
 
-                    // Check that the response contains an array of total_consumption data.
                     if (
                         !response.data ||
                         !response.data.total_consumption ||
@@ -322,17 +321,16 @@ export default {
                         return;
                     }
 
-                    // Find the matching device by comparing dev_eui.
                     const matchedDevice = response.data.total_consumption.find(
                         (item) => item.dev_eui === device.dev_eui
                     );
 
                     if (matchedDevice) {
-                        // Update the device's totalConsumption using the value from the API.
                         device.totalConsumption = (parseFloat(matchedDevice.total_consumption) / 1000).toFixed(2);
-                        device.device_name = matchedDevice.device_name;
 
-                        // Optionally update the highest consumption device if this device's consumption is higher.
+                        // ✅ Keep your original device_name from categorizedDevices
+                        console.log(`Keeping original name for ${device.dev_eui}:`, device.device_name);
+
                         const deviceConsumption = parseFloat(device.totalConsumption) || 0;
                         const currentHighest = parseFloat(this.highestConsumptionValue) || 0;
                         if (deviceConsumption > currentHighest) {

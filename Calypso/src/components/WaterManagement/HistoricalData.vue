@@ -524,11 +524,11 @@ export default {
                     rawData.forEach((sheet) => {
                         const rows = sheet.values.slice(1); // Skip header row
                         const sheetData = rows.map((row) => ({
-                            IMEI: row[0],
-                            DeviceName: row[1],
-                            SerialNo: row[2],
-                            MeterReading: parseFloat(row[16]) || 0,
-                            ReadingMeterTime: new Date(row[10]) || null,
+                            IMEI: row[3],
+                            DeviceName: row[5],
+                            SerialNo: row[6],
+                            MeterReading: parseFloat(row[1]) || 0,
+                            ReadingMeterTime: new Date(row[0]) || null,
                         }));
                         selectedData = selectedData.concat(sheetData);
                     });
@@ -539,11 +539,11 @@ export default {
                     if (sheet) {
                         const rows = sheet.values.slice(1); // Skip header row
                         selectedData = rows.map((row) => ({
-                            IMEI: row[0],
-                            DeviceName: row[1],
-                            SerialNo: row[2],
-                            MeterReading: parseFloat(row[16]) || 0,
-                            ReadingMeterTime: new Date(row[10]) || null,
+                            IMEI: row[3],
+                            DeviceName: row[5],
+                            SerialNo: row[6],
+                            MeterReading: parseFloat(row[1]) || 0,
+                            ReadingMeterTime: new Date(row[0]) || null,
                         }));
                     } else {
                         console.warn(`Sheet for meter ${this.selectedMeterSN} not found.`);

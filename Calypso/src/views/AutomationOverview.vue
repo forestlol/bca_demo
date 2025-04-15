@@ -53,7 +53,7 @@
                 <span>Estimated Energy Savings</span>
               </div>
               <div class="card-content">
-                <div class="metric-value">245 kWh</div>
+                <div class="metric-value">- kWh</div>
                 <div class="metric-subtitle">Monthly Savings</div>
               </div>
             </div>
@@ -63,7 +63,7 @@
                 <span>Conditional Logic</span>
               </div>
               <div class="card-content">
-                <div class="metric-value">8</div>
+                <div class="metric-value">-</div>
                 <div class="metric-subtitle">Active Rules</div>
               </div>
             </div>
@@ -73,7 +73,7 @@
                 <span>Schedule</span>
               </div>
               <div class="card-content">
-                <div class="metric-value">12</div>
+                <div class="metric-value">-</div>
                 <div class="metric-subtitle">Active Schedules</div>
               </div>
             </div>
@@ -83,7 +83,7 @@
                 <span>Device Optimized</span>
               </div>
               <div class="card-content">
-                <div class="metric-value">85%</div>
+                <div class="metric-value">-%</div>
                 <div class="metric-subtitle">Current Optimization</div>
               </div>
             </div>
@@ -287,10 +287,10 @@ export default {
         'FCU 7': 'COM8',
         'FCU 8': 'COM9',
         'FCU 9': 'COM10',
-        'FCU 10': 'COM6', // Duplicated from FCU 6
+        'FCU 10': 'COM11',
         'FCU 11': 'COM7', // Duplicated from FCU 7
         'FCU 12': 'COM8', // Duplicated from FCU 8
-        'FCU 13': 'COM9'  // Duplicated from FCU 9
+        'FCU 13': 'COM14' 
       },
       macId: null
     };
