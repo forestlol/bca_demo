@@ -205,7 +205,7 @@ export default {
       // Schedule next update after 5 minutes (adjust as needed)
       setTimeout(() => {
         this.updateCirclesLoop();
-      }, 5000);
+      }, 120000);
     },
     showValue(index, event) {
       const circle = this.circles[index];
