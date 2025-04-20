@@ -244,8 +244,7 @@
 </template>
 
 <script>
-import axios from 'axios';
-import FloorplanComponent from "@/components/AutomationFloorplanComponent.vue"; // Update path as needed
+import FloorplanComponent from "@/components/AutomationFloorplanComponent.vue";
 import HeatmapComponent from "@/components/AutomationHeatmapComponent.vue";
 
 export default {
@@ -256,342 +255,61 @@ export default {
   },
   data() {
     return {
-      devices: [], // To store the fetched device list
-      error: null, // To store error messages
+      // tabs
       activeTab: "deviceInfo",
       activeControlTab: "optimization",
-      setTemperature: "-",
-      currentMode: 'Mode 1',
-      modes: ['Heating', 'Humidity reduction', 'Cooling', 'Auto Operation'],
-      driveStatus: false,
-      // Random values for optimization metrics
-      energySavings: 245,
-      conditionalRules: 8,
-      scheduleCount: 12,
-      optimizationPercentage: 85,
-      floorplanImage: require("@/assets/Floorplan.jpg"),
-      scheduleLogs: [],
-      conditionalLogs: [
-        { date: "2024-12-03", commandType: "Adjust Temp", state: "OFF", status: "Unsuccessful" },
-        { date: "2024-12-03", commandType: "Mode Switch", state: "ON", status: "Success" },
-        { date: "2024-12-03", commandType: "Turn Off", state: "OFF", status: "Unsuccessful" },
+
+      // control panel state
+      selectedFcu: 'FCU 4',
+      setTemperature: 22,
+      currentTemperature: 24,
+      currentMode: 'Cooling',
+      driveStatus: true,
+
+      // optimization metrics (hard‑coded)
+      energySavings: 245,         // kWh
+      conditionalRules: 8,        // active rules
+      scheduleCount: 12,          // schedules
+      optimizationPercentage: 85, // %
+
+      // FCU options (hard‑coded)
+      fcuOptions: [
+        'FCU 4','FCU 5','FCU 6','FCU 7','FCU 8',
+        'FCU 9','FCU 10','FCU 11','FCU 12','FCU 13'
       ],
-      commandLogs: [],
-      selectedFcu: '',
-      currentTemperature: null,
-      fcuOptions: ['FCU 4', 'FCU 5', 'FCU 6', 'FCU 7', 'FCU 8', 'FCU 9', 'FCU 10', 'FCU 11', 'FCU 12', 'FCU 13'],
-      fcuToPort: {
-        'FCU 4': 'COM5',
-        'FCU 5': 'COM6',
-        'FCU 6': 'COM7',
-        'FCU 7': 'COM8',
-        'FCU 8': 'COM9',
-        'FCU 9': 'COM10',
-        'FCU 10': 'COM11',
-        'FCU 11': 'COM7', // Duplicated from FCU 7
-        'FCU 12': 'COM8', // Duplicated from FCU 8
-        'FCU 13': 'COM14' 
-      },
-      macId: null
+
+      // logs (hard‑coded examples)
+      scheduleLogs: [
+        { date: "2025-04-15", commandType: "Set temperature", state: "22°C", status: "Success" },
+        { date: "2025-04-14", commandType: "Toggle Drive",   state: "OFF",  status: "Success" },
+        { date: "2025-04-13", commandType: "Mode Switch",    state: "Heating", status: "Success" }
+      ],
+      conditionalLogs: [
+        { date: "2025-04-12", commandType: "Adjust Temp",    state: "OFF",     status: "Unsuccessful" },
+        { date: "2025-04-11", commandType: "Mode Switch",    state: "ON",      status: "Success"        },
+        { date: "2025-04-10", commandType: "Turn Off",       state: "OFF",     status: "Unsuccessful" }
+      ]
     };
   },
-  mounted() {
-    this.scheduleLogs = []; // Clear existing logs
-    this.retrieveCommandLogs(); // Retrieve logs from local storage
-  },
   methods: {
-    storeTemperatureCommand() {
-      // Ensure the selectedFcu and setTemperature are valid
-      if (!this.selectedFcu) {
-        console.error('No FCU selected.');
-        return;
-      }
-      if (!this.setTemperature || isNaN(this.setTemperature)) {
-        console.error('Invalid temperature setpoint.');
-        return;
-      }
-
-      const port = this.fcuToPort[this.selectedFcu]; // Get the port for the selected FCU
-      const value = parseInt(this.setTemperature, 10) * 10; // Ensure the value is an integer
-      const apiUrl = 'https://ge-aircon.ngrok.app/trigger_set_register';
-
-      const payload = {
-        port: port,
-        register_data: [
-          {
-            name: 'Set Temperature',
-            value: value,
-          },
-        ],
-      };
-
-      // Make the POST request to the API
-      axios
-        .post(apiUrl, payload, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        })
-        .then((response) => {
-          console.log('API Response:', response.data);
-
-          // Log the command locally
-          const currentDate = new Date().toISOString().split('T')[0]; // Get the current date in YYYY-MM-DD format
-          const commandType = 'Set temperature';
-          const state = this.setTemperature; // Read temperature from input
-          const status = response.data.success ? 'Success' : 'Failure'; // Assume success from the API response
-
-          const commandLog = {
-            date: currentDate,
-            commandType: commandType,
-            state: state + '°C', // Append °C to the state
-            status: status,
-          };
-
-          // Retrieve existing logs from local storage
-          const existingLogs = JSON.parse(localStorage.getItem('commandLogs')) || [];
-          existingLogs.push(commandLog);
-
-          // Store updated logs back to local storage
-          localStorage.setItem('commandLogs', JSON.stringify(existingLogs));
-
-          // Optionally, refresh displayed logs
-          this.retrieveCommandLogs();
-        })
-        .catch((error) => {
-          console.error('Error posting to API:', error);
-
-          // Log the failed command locally
-          const currentDate = new Date().toISOString().split('T')[0];
-          const commandType = 'Set temperature';
-          const state = this.setTemperature;
-          const status = 'Failure';
-
-          const commandLog = {
-            date: currentDate,
-            commandType: commandType,
-            state: state + '°C',
-            status: status,
-          };
-
-          const existingLogs = JSON.parse(localStorage.getItem('commandLogs')) || [];
-          existingLogs.push(commandLog);
-
-          localStorage.setItem('commandLogs', JSON.stringify(existingLogs));
-          this.retrieveCommandLogs();
-          this.fetchTemperatureData();
-        });
-    },
-    retrieveCommandLogs() {
-      const logs = JSON.parse(localStorage.getItem('commandLogs')) || []; // Retrieve logs from local storage
-      this.scheduleLogs = logs.slice(-5); // Keep only the last 5 logs
-    },
+    // no-op stubs since everything is hard‑coded
+    handleFcuChange() {},
+    storeTemperatureCommand() {},
     setMode(mode) {
-      // Map mode to corresponding value
-      const modeMapping = {
-        Heating: 1,
-        "Humidity reduction": 2,
-        Cooling: 3,
-        "Auto Operation": 8,
-      };
-
-      const value = modeMapping[mode];
-      if (!value) {
-        console.error('Invalid mode selected:', mode);
-        return;
-      }
-
-      this.currentMode = mode; // Update the current mode for UI
-
-      const port = this.fcuToPort[this.selectedFcu]; // Get the port for the selected FCU
-      if (!port) {
-        console.error('No FCU selected or invalid port.');
-        return;
-      }
-
-      console.log("current value: " + value);
-      const payload = {
-        port: port,
-        register_data: [
-          {
-            name: 'Drive Mode',
-            value: value,
-          },
-        ],
-      };
-
-      const apiUrl = 'https://ge-aircon.ngrok.app/trigger_set_register';
-
-      // Post to the API
-      axios
-        .post(apiUrl, payload, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        })
-        .then((response) => {
-          console.log('API Response:', response.data);
-
-          // Check if the response contains the expected success message
-          if (response.data.message && response.data.message.includes('Successfully wrote values')) {
-            console.log(`Mode ${mode} (${value}) successfully set.`);
-          } else {
-            console.error(`Failed to set mode ${mode} (${value}):`, response.data);
-          }
-        })
-        .catch((error) => {
-          console.error('Error posting to API:', error);
-        });
+      this.currentMode = mode;
     },
     toggleDrive() {
-      this.driveStatus = !this.driveStatus; // Toggle the drive status
-      const currentDate = new Date().toISOString().split('T')[0]; // Get the current date in YYYY-MM-DD format
-      const commandType = 'Toggle Drive';
-      const state = this.driveStatus ? 'ON' : 'OFF'; // Determine the state based on the drive status
-      const status = 'Success'; // Assuming status is always success for this command
-
-      // Prepare the API payload
-      const port = this.fcuToPort[this.selectedFcu]; // Get the port for the selected FCU
-      if (!port) {
-        console.error('No FCU selected or invalid port.');
-        return;
-      }
-
-      const value = this.driveStatus ? 1 : 0; // 1 for Drive ON, 0 for Drive OFF
-      const payload = {
-        port: port,
-        register_data: [
-          {
-            name: 'Drive On/Off',
-            value: value,
-          },
-        ],
-      };
-
-      const apiUrl = 'https://ge-aircon.ngrok.app/trigger_set_register';
-
-      // Make the API call
-      axios
-        .post(apiUrl, payload, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        })
-        .then((response) => {
-          console.log('API Response:', response.data);
-
-          // Check if the response contains the expected success message
-          if (response.data.message && response.data.message.includes('Successfully wrote values')) {
-            console.log(`Drive status ${state} (${value}) successfully set.`);
-          } else {
-            console.error(`Failed to set drive status ${state} (${value}):`, response.data);
-          }
-        })
-        .catch((error) => {
-          console.error('Error posting to API:', error);
-        });
-
-      // Log the command locally
-      const commandLog = {
-        date: currentDate,
-        commandType: commandType,
-        state: state,
-        status: status,
-      };
-
-      // Retrieve existing logs from local storage
-      const existingLogs = JSON.parse(localStorage.getItem('commandLogs')) || [];
-      existingLogs.push(commandLog); // Add the new log entry
-
-      // Store updated logs back to local storage
-      localStorage.setItem('commandLogs', JSON.stringify(existingLogs));
-
-      console.log('Drive status:', this.driveStatus ? 'ON' : 'OFF'); // Log the drive status
-
-      // Optionally, refresh displayed logs
-      this.retrieveCommandLogs();
+      this.driveStatus = !this.driveStatus;
     },
     getTemperatureStatus(temp) {
-      if (!temp) return 'No Data';
       if (temp <= 20) return 'Cool';
       if (temp <= 24) return 'Warm';
       return 'Hot';
-    },
-    async handleFcuChange() {
-      if (this.selectedFcu) {
-        await this.fetchTemperatureData();
-      } else {
-        this.currentTemperature = null;
-      }
-    },
-    async fetchTemperatureData() {
-      try {
-        const response = await axios.get('https://ge-aircon.ngrok.app/trigger_read_all', {
-          headers: {
-            'Accept': 'application/json',
-            'ngrok-skip-browser-warning': 'true'
-          }
-        });
-
-        let data = response.data;
-        console.log('API Response:', data);
-
-        if (!Array.isArray(data)) {
-          console.error('Expected array response from API, received:', typeof data);
-          return;
-        }
-
-        // Get the COM port for the selected FCU
-        const selectedPort = this.fcuToPort[this.selectedFcu];
-
-        // Find the data for the selected FCU
-        const fcuData = data.find(item => item.port === selectedPort);
-
-        if (fcuData && fcuData.data && Array.isArray(fcuData.data)) {
-          // Get current temperature (address 8)
-          const currentTempData = fcuData.data.find(d => d.address === 8);
-          this.currentTemperature = currentTempData ? currentTempData.value : null;
-
-          // Get set temperature (address 1)
-          const setTempData = fcuData.data.find(d => d.address === 1);
-          this.setTemperature = setTempData ? setTempData.value : null;
-
-          // Get drive mode (address 0)
-          const driveModeData = fcuData.data.find(d => d.address === 0);
-          const driveModeValue = driveModeData ? driveModeData.value : null;
-
-          // Map drive mode value to details
-          const driveModeDetails = driveModeData?.details || {};
-          const activeMode = driveModeDetails[driveModeValue] || 'Unknown';
-          this.currentMode = activeMode;
-
-          // Get Drive On/Off status (address 7)
-          const driveStatusData = fcuData.data.find(d => d.address === 7);
-          const driveStatusValue = driveStatusData ? driveStatusData.value : null;
-
-          // Map Drive On/Off value to details
-          const driveStatusDetails = driveStatusData?.details || {};
-          const driveStatus = driveStatusDetails[driveStatusValue] || 'Unknown';
-          this.driveStatus = driveStatusValue === 1; // Set boolean for UI
-
-          // Log all values
-          console.log(`${this.selectedFcu}:
-        Current Temperature: ${this.currentTemperature}°C
-        Set Temperature: ${this.setTemperature}°C
-        Drive Mode: ${activeMode}
-        Drive Status: ${driveStatus}`);
-        }
-      } catch (error) {
-        console.error('Error fetching temperature data:', error);
-        if (error.response) {
-          console.error('Response data:', error.response.data);
-          console.error('Response status:', error.response.status);
-        }
-      }
     }
   }
 };
 </script>
+
 
 <style scoped>
 .automation-overview-container {
@@ -600,6 +318,7 @@ export default {
   gap: 20px;
   padding: 20px;
   color: black;
+  padding-top: 5%;
 }
 
 .top-section {

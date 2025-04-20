@@ -50,7 +50,7 @@
                                 <router-link to="/energy-management/dataLog" class="menu-link">
                                     Data Logs
                                 </router-link>
-                            </li>               
+                            </li>
                         </ul>
                     </li>
                 </ul>
@@ -78,7 +78,7 @@
                                 <router-link to="/water-management/deviceFloorplan" class="menu-link">
                                     Device Floor Plan
                                 </router-link>
-                            </li>                            
+                            </li>
                             <li>
                                 <router-link to="/water-management/dataLog" class="menu-link">
                                     Data Logs
@@ -96,8 +96,8 @@
                         <div class="menu-link" @click="toggleDropdown('automationManagement')">
                             <i class="fas fa-cog"></i> <!-- Water droplet icon -->
                             <span v-if="!collapsed">Automation Management</span>
-                            <i class="fas fa-chevron-down dropdown-icon" :class="{ rotated: dropdowns.automationManagement }"
-                                v-if="!collapsed"></i>
+                            <i class="fas fa-chevron-down dropdown-icon"
+                                :class="{ rotated: dropdowns.automationManagement }" v-if="!collapsed"></i>
                         </div>
                         <ul v-if="dropdowns.automationManagement && !collapsed" class="submenu">
                             <li>
@@ -145,6 +145,17 @@
                     </li>
                 </ul>
             </div>
+            <!-- Logout Section -->
+             <div class="menu-section logout-section">
+                 <ul class="menu">
+                    <li class="menu-item">
+                        <router-link to="/Login" class="menu-link">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span v-if="!collapsed">Logout</span>
+                            </router-link>
+                        </li>
+                    </ul>
+                </div>
         </nav>
     </aside>
 </template>

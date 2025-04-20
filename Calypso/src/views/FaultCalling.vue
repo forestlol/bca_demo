@@ -64,21 +64,21 @@ export default {
     return {
       faultLogs: [
         {
-          meterName: "FCU 4",
+          meterName: "Meter 1",
           description: "Overheating detected",
           location: "Room A",
           status: "Unresolved",
           time: "2024-12-05 14:30",
         },
         {
-          meterName: "FCU 6",
+          meterName: "Meter 3",
           description: "Low power supply",
           location: "Room B",
           status: "Resolved",
           time: "2024-12-05 12:15",
         },
         {
-          meterName: "Overall Lighting",
+          meterName: "Lighting Meter",
           description: "Connection error",
           location: "Main Hall",
           status: "Unresolved",
@@ -117,6 +117,7 @@ export default {
   background-color: #f5f5f5;
   color: black;
   border-radius: 10px;
+  padding-top: 5%;
 }
 
 .back-button {

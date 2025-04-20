@@ -26,67 +26,17 @@
 </template>
 
 <script>
-import axios from "axios";
 export default {
+  name: 'FloorplanHeatmap',
   data() {
     return {
       selectedFloor: "GE Canteen",
       circles: [
-        {
-          id: 1,
-          x: 79,
-          y: 46,
-          title: "Zone 1",
-          deviceID: "0004ED01000018F5",
-          dailyUsage: 0,
-          activityCount: 0,
-          onoffState: 0,
-          updated: false  // Added flag: false means not updated yet.
-        },
-        {
-          id: 2,
-          x: 64,
-          y: 46,
-          title: "Zone 2",
-          deviceID: "0004ED01000018E5",
-          dailyUsage: 0,
-          activityCount: 0,
-          onoffState: 0,
-          updated: false
-        },
-        {
-          id: 3,
-          x: 48,
-          y: 46,
-          title: "Zone 3",
-          deviceID: "0004ED0100001866",
-          dailyUsage: 0,
-          activityCount: 0,
-          onoffState: 0,
-          updated: false
-        },
-        {
-          id: 4,
-          x: 32,
-          y: 46,
-          title: "Zone 4",
-          deviceID: "0004ED0100001678",
-          dailyUsage: 0,
-          activityCount: 0,
-          onoffState: 0,
-          updated: false
-        },
-        {
-          id: 5,
-          x: 17,
-          y: 46,
-          title: "Zone 5",
-          deviceID: "0004ED01000018FE",
-          dailyUsage: 0,
-          activityCount: 0,
-          onoffState: 0,
-          updated: false
-        },
+        { id: 1, x: 79, y: 46, title: "Zone 1", dailyUsage: 15.2, activityCount: 5, onoffState: 1, color: "green", size: 24 },
+        { id: 2, x: 64, y: 46, title: "Zone 2", dailyUsage:  8.7, activityCount: 2, onoffState: 0, color: "blue",  size: 20 },
+        { id: 3, x: 48, y: 46, title: "Zone 3", dailyUsage: 22.5, activityCount: 9, onoffState: 1, color: "orange",size: 32 },
+        { id: 4, x: 32, y: 46, title: "Zone 4", dailyUsage:  0.0, activityCount: 0, onoffState: 0, color: "blue",  size: 20 },
+        { id: 5, x: 17, y: 46, title: "Zone 5", dailyUsage: 30.1, activityCount:12, onoffState: 1, color: "red",   size: 40 }
       ],
       tooltip: {
         visible: false,
@@ -95,138 +45,30 @@ export default {
         title: "",
         dailyUsage: 0,
         activityCount: 0,
-        onoffState: 0, // Add tooltip state as well.
-      },
+        onoffState: 0
+      }
     };
   },
   methods: {
-    async fetchAndUpdateCircles() {
-      // Loop over each circle in your circles array.
-      for (const circle of this.circles) {
-        // If the circle has already been updated, skip further fetching.
-        if (circle.updated) continue;
-        // Prepare form data per the API requirements.
-        const formData = new URLSearchParams();
-        formData.append("deviceID", circle.deviceID);
-
-        try {
-          // Use postWithRetry to handle token errors.
-          const response = await this.postWithRetry(
-            "https://ge-lumani.ngrok.app/api/GetMinuteTrend",
-            formData,
-            { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-          );
-          console.log(`Response for device ${circle.deviceID}:`, response.data);
-          if (response.data.code === 1 && response.data.data) {
-            const data = response.data.data;
-            const totalUsage = data.yData.reduce((sum, val) => sum + parseFloat(val || 0), 0);
-            const activityCount = data.yData2.reduce((count, val) => count + (parseFloat(val) !== 0 ? 1 : 0), 0);
-            circle.dailyUsage = totalUsage.toFixed(1);
-            circle.activityCount = activityCount;
-            if (activityCount === 0) {
-              circle.color = "blue"; // Minimal activity → blue
-              circle.size = 20;
-            } else if (activityCount < 100) {
-              circle.color = "orange"; // Some activity → orange
-              circle.size = 20 + (activityCount / 100) * 20;
-            } else {
-              circle.color = "red"; // Busy mode → red
-              circle.size = Math.min(20 + ((activityCount - 100) / 100) * 20 + 40, 80);
-            }
-            // Mark this circle as updated.
-            circle.updated = true;
-          } else {
-            console.error(`Unexpected API response for device ${circle.deviceID}:`, response.data);
-          }
-        } catch (error) {
-          console.error(`Error fetching data for device ${circle.deviceID}:`, error);
-        }
-      }
-    },
-    async fetchOverviewList() {
-      // Prepare form data with MacID=0.
-      const formData = new URLSearchParams();
-      formData.append("MacID", "0");
-
-      try {
-        const response = await axios.post(
-          "https://ge-lumani.ngrok.app/api/GetOverviewList",
-          formData,
-          { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-        );
-        console.log("Overview List Response:", response.data);
-        if (response.data.code === 1 && Array.isArray(response.data.data)) {
-          response.data.data.forEach(zone => {
-            // Find matching circle by DeviceID.
-            const matchingCircle = this.circles.find(c => c.deviceID === zone.DeviceID);
-            if (matchingCircle && zone.State) {
-              matchingCircle.onoffState = Number(zone.State.onoffstate);
-              console.log(`Zone ${matchingCircle.title} updated to ${matchingCircle.onoffState === 1 ? "ON" : "OFF"}`);
-            }
-          });
-        } else {
-          console.error("Unexpected Overview List response:", response.data);
-        }
-      } catch (error) {
-        console.error("Error fetching overview list:", error);
-      }
-    },
-    async postWithRetry(url, data, config) {
-      let retryCount = 0;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        try {
-          const response = await axios.post(url, data, config);
-          return response;
-        } catch (error) {
-          let errStr = "";
-          if (error.response && error.response.data) {
-            errStr = error.response.data.error || error.response.data.msg || "";
-          }
-          if (errStr.includes("Incorrect token") || errStr.includes("validation failed")) {
-            console.warn("Token error detected, retrying in 1 second...");
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-            retryCount++;
-            if (retryCount >= 15) {
-              console.error("Maximum retries reached for token error. Aborting.");
-              throw error;
-            }
-            continue;
-          } else {
-            throw error;
-          }
-        }
-      }
-    },
-    // Use a recursive update loop if you need to refresh periodically.
-    async updateCirclesLoop() {
-      await this.fetchAndUpdateCircles();
-      await this.fetchOverviewList();
-      // Schedule next update after 5 minutes (adjust as needed)
-      setTimeout(() => {
-        this.updateCirclesLoop();
-      }, 120000);
-    },
     showValue(index, event) {
-      const circle = this.circles[index];
-      this.tooltip.visible = true;
-      this.tooltip.x = event.clientX + 15;
-      this.tooltip.y = event.clientY + 15;
-      this.tooltip.title = circle.title;
-      this.tooltip.dailyUsage = circle.dailyUsage;
-      this.tooltip.activityCount = circle.activityCount;
-      this.tooltip.onoffState = circle.onoffState;
+      const c = this.circles[index];
+      this.tooltip = {
+        visible: true,
+        x: event.clientX + 10,
+        y: event.clientY + 10,
+        title: c.title,
+        dailyUsage: c.dailyUsage,
+        activityCount: c.activityCount,
+        onoffState: c.onoffState
+      };
     },
     hideValue() {
       this.tooltip.visible = false;
     }
-  },
-  mounted() {
-    // Start the update loop.
-    this.updateCirclesLoop();
   }
 };
 </script>
+
 
 <style scoped>
 .heatmap-container {

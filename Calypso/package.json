@@ -29,6 +29,7 @@
     "mqtt": "^5.9.1",
     "paho-mqtt": "^1.1.0",
     "qs": "^6.13.1",
+    "sweetalert2": "^11.19.1",
     "vue": "^3.4.27",
     "vue-apexcharts": "^1.6.2",
     "vue-chartjs": "^5.3.1",

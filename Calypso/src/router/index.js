@@ -13,12 +13,18 @@ import FaultCalling from "@/views/FaultCalling.vue";
 import ScheduledCommand from "@/views/ScheduledCommand.vue";
 import ConditionalCommand from "@/views/ConditionalCommand.vue";
 // import AutomationManagementView from "../views/AutomationManagementView.vue";
+import Login from "@/views/Login.vue";
 
 const routes = [
   {
     path: "/",
     name: "Dashboard",
     component: DashboardView, // Main Dashboard View
+  },
+  {
+    path: "/login",
+    name: "Login",
+    component: Login, // Main Dashboard View
   },
   {
     path: "/energy-management",
