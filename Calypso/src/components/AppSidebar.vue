@@ -114,48 +114,18 @@
                     </li>
                 </ul>
             </div>
-            <div class="menu-section">
-                <span class="menu-title" v-if="!collapsed">Others</span>
-                <ul class="menu">
-                    <!-- Energy Management Dropdown -->
-                    <li class="menu-item dropdown">
-                        <div class="menu-link" @click="toggleDropdown('others')">
-                            <i class="fas fa-ellipsis-h"></i>
-                            <span v-if="!collapsed">Others</span>
-                            <i class="fas fa-chevron-down dropdown-icon" :class="{ rotated: dropdowns.others }"
-                                v-if="!collapsed"></i>
-                        </div>
-                        <ul v-if="dropdowns.others && !collapsed" class="submenu">
-                            <li>
-                                <router-link to="/others/simulation" class="menu-link">
-                                    Simulation/Cost Estimator
-                                </router-link>
-                            </li>
-                            <li>
-                                <router-link to="/others/efficiency-settings" class="menu-link">
-                                    Efficiency Settings
-                                </router-link>
-                            </li>
-                            <li>
-                                <router-link to="/others/esg" class="menu-link">
-                                    ESG
-                                </router-link>
-                            </li>
-                        </ul>
-                    </li>
-                </ul>
-            </div>
+
             <!-- Logout Section -->
-             <div class="menu-section logout-section">
-                 <ul class="menu">
+            <div class="menu-section logout-section">
+                <ul class="menu">
                     <li class="menu-item">
                         <router-link to="/Login" class="menu-link">
                             <i class="fas fa-sign-out-alt"></i>
                             <span v-if="!collapsed">Logout</span>
-                            </router-link>
-                        </li>
-                    </ul>
-                </div>
+                        </router-link>
+                    </li>
+                </ul>
+            </div>
         </nav>
     </aside>
 </template>
@@ -189,12 +159,21 @@ export default {
 .app-sidebar {
     width: 250px;
     background-color: #1e293b;
-    height: 100%;
+    height: 100vh;
+    /* Use viewport height */
     position: fixed;
     left: 0;
+    top: 0;
     transition: width 0.3s;
-    overflow: hidden;
+    overflow-y: auto;
+    /* Enable vertical scroll if needed */
+    overflow-x: hidden;
+    z-index: 100;
+    /* Stay above other content */
+    display: flex;
+    flex-direction: column;
 }
+
 
 .app-sidebar.collapsed {
     width: 80px;

@@ -53,7 +53,7 @@
                 <span>Estimated Energy Savings</span>
               </div>
               <div class="card-content">
-                <div class="metric-value">- kWh</div>
+                <div class="metric-value">{{ energySavings }} kWh</div>
                 <div class="metric-subtitle">Monthly Savings</div>
               </div>
             </div>
@@ -63,7 +63,7 @@
                 <span>Conditional Logic</span>
               </div>
               <div class="card-content">
-                <div class="metric-value">-</div>
+                <div class="metric-value">{{ conditionalRules }}</div>
                 <div class="metric-subtitle">Active Rules</div>
               </div>
             </div>
@@ -73,7 +73,7 @@
                 <span>Schedule</span>
               </div>
               <div class="card-content">
-                <div class="metric-value">-</div>
+                <div class="metric-value">{{ scheduleCount }}</div>
                 <div class="metric-subtitle">Active Schedules</div>
               </div>
             </div>
@@ -83,12 +83,14 @@
                 <span>Device Optimized</span>
               </div>
               <div class="card-content">
-                <div class="metric-value">-%</div>
+                <div class="metric-value">{{ optimizationPercentage }}%</div>
                 <div class="metric-subtitle">Current Optimization</div>
               </div>
             </div>
           </div>
+
           <div v-if="activeControlTab === 'control'" class="grid-container expanded-grid">
+            <!-- FCU Selection Card -->
             <div class="control-card full-width">
               <div class="card-header">
                 <i class="fas fa-microchip"></i>
@@ -99,8 +101,10 @@
                   <option value="">Select FCU</option>
                   <option v-for="fcu in fcuOptions" :key="fcu" :value="fcu">{{ fcu }}</option>
                 </select>
+                <div class="metric-subtitle" v-if="selectedFcu">Selected: <b>{{ selectedFcu }}</b></div>
               </div>
             </div>
+            <!-- Set Temperature Card -->
             <div class="control-card">
               <div class="card-header">
                 <i class="fas fa-thermometer-half"></i>
@@ -115,8 +119,10 @@
                   </div>
                   <button @click="storeTemperatureCommand" class="set-btn">Set</button>
                 </div>
+                <div class="metric-subtitle">Current Setting: <b>{{ setTemperature }}°C</b></div>
               </div>
             </div>
+            <!-- Control Mode Card -->
             <div class="control-card">
               <div class="card-header">
                 <i class="fas fa-sliders-h"></i>
@@ -129,8 +135,10 @@
                     {{ mode }}
                   </button>
                 </div>
+                <div class="metric-subtitle">Current Mode: <b>{{ currentMode }}</b></div>
               </div>
             </div>
+            <!-- Drive On/Off Card -->
             <div class="control-card">
               <div class="card-header">
                 <i class="fas fa-power-off"></i>
@@ -142,8 +150,13 @@
                     {{ driveStatus ? 'ON' : 'OFF' }}
                   </button>
                 </div>
+                <div class="metric-subtitle">
+                  Status: <b :class="driveStatus ? 'green-text' : 'red-text'">{{ driveStatus ? 'Running' : 'Stopped'
+                  }}</b>
+                </div>
               </div>
             </div>
+            <!-- Room Temperature Card -->
             <div class="control-card">
               <div class="card-header">
                 <i class="fas fa-temperature-low"></i>
@@ -160,6 +173,7 @@
               </div>
             </div>
           </div>
+
         </div>
       </div>
     </div>
@@ -208,7 +222,7 @@
           <router-link to="/automation-management/conditionalCommand" class="view-more-button">
             Conditional Logic
           </router-link>
-          
+
           <router-link to="/automation-management/conditionalCommand" class="view-more-button">
             View More
           </router-link>
@@ -274,27 +288,27 @@ export default {
 
       // FCU options (hard‑coded)
       fcuOptions: [
-        'FCU 4','FCU 5','FCU 6','FCU 7','FCU 8',
-        'FCU 9','FCU 10','FCU 11','FCU 12','FCU 13'
+        'FCU 4', 'FCU 5', 'FCU 6', 'FCU 7', 'FCU 8',
+        'FCU 9', 'FCU 10', 'FCU 11', 'FCU 12', 'FCU 13'
       ],
-
+      modes: ['Cooling', 'Heating', 'Fan', 'Dry'],
       // logs (hard‑coded examples)
       scheduleLogs: [
         { date: "2025-04-15", commandType: "Set temperature", state: "22°C", status: "Success" },
-        { date: "2025-04-14", commandType: "Toggle Drive",   state: "OFF",  status: "Success" },
-        { date: "2025-04-13", commandType: "Mode Switch",    state: "Heating", status: "Success" }
+        { date: "2025-04-14", commandType: "Toggle Drive", state: "OFF", status: "Success" },
+        { date: "2025-04-13", commandType: "Mode Switch", state: "Heating", status: "Success" }
       ],
       conditionalLogs: [
-        { date: "2025-04-12", commandType: "Adjust Temp",    state: "OFF",     status: "Unsuccessful" },
-        { date: "2025-04-11", commandType: "Mode Switch",    state: "ON",      status: "Success"        },
-        { date: "2025-04-10", commandType: "Turn Off",       state: "OFF",     status: "Unsuccessful" }
+        { date: "2025-04-12", commandType: "Adjust Temp", state: "OFF", status: "Unsuccessful" },
+        { date: "2025-04-11", commandType: "Mode Switch", state: "ON", status: "Success" },
+        { date: "2025-04-10", commandType: "Turn Off", state: "OFF", status: "Unsuccessful" }
       ]
     };
   },
   methods: {
     // no-op stubs since everything is hard‑coded
-    handleFcuChange() {},
-    storeTemperatureCommand() {},
+    handleFcuChange() { },
+    storeTemperatureCommand() { },
     setMode(mode) {
       this.currentMode = mode;
     },

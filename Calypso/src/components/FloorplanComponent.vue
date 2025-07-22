@@ -108,13 +108,13 @@ export default {
 
 <style scoped>
 .heatmap-container {
+  margin-top: 5%;
   border: 2px solid #ddd;
   border-radius: 10px;
   background-color: #f9f9f9;
   max-width: 1200px;
-  margin: 20px auto;
+  margin: 5% auto;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  padding-top: 5%;
 }
 
 .toolbar {

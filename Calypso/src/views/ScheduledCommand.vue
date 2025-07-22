@@ -1,5 +1,10 @@
 <template>
     <div class="logs-container">
+        <!-- Back Button -->
+        <button class="back-btn" @click="$router.back()">
+            <i class="fas fa-arrow-left"></i>
+            Back
+        </button>
         <div class="logs-header">
             <h3>Schedule Command Logs</h3>
         </div>
@@ -23,7 +28,8 @@
                         {{ log.state }}
                     </td>
                     <td>
-                        <span :class="{ 'green-text': log.status === 'Success', 'red-text': log.status === 'Unsuccessful' }">
+                        <span
+                            :class="{ 'green-text': log.status === 'Success', 'red-text': log.status === 'Unsuccessful' }">
                             {{ log.status === 'Success' ? '✅' : '❌' }}
                         </span>
                     </td>
@@ -61,6 +67,7 @@ export default {
     color: black;
     border-radius: 10px;
     padding: 20px;
+    margin-top: 70px;
 }
 
 .logs-header {
@@ -97,5 +104,30 @@ export default {
 .red-text {
     color: red;
     font-weight: bold;
+}
+
+.back-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    padding: 7px 18px;
+    margin-bottom: 18px;
+    cursor: pointer;
+    font-weight: 500;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    transition: background 0.2s;
+}
+
+.back-btn:hover {
+    background: #0056b3;
+}
+
+.back-btn i {
+    font-size: 16px;
 }
 </style>

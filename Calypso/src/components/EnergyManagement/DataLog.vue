@@ -8,7 +8,7 @@
         <label for="location-sort">Sort Location:</label>
         <select id="location-sort" v-model="sortLocation">
           <option>All Locations</option>
-          <option>Location A</option>
+          <option v-for="loc in locations" :key="loc">{{ loc }}</option>
         </select>
       </div>
       <div class="option">
@@ -44,13 +44,16 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(device, index) in filteredDevices" :key="index">
+          <tr v-for="(device, idx) in filteredDevices" :key="idx">
             <td>{{ device.name }}</td>
             <td>{{ device.type }}</td>
             <td>{{ device.location }}</td>
             <td>{{ device.accToday }}</td>
             <td>{{ device.accMonth }}</td>
-            <td>{{ device.status }}</td>
+            <!-- Online green, others red -->
+            <td :class="device.status === 'Online' ? 'status-online' : 'status-offline'">
+              {{ device.status }}
+            </td>
           </tr>
         </tbody>
       </table>
@@ -73,9 +76,10 @@
           <tr v-if="faultLogs.length === 0">
             <td colspan="5" class="text-center">No faults logged</td>
           </tr>
-          <tr v-else v-for="(fault, index) in faultLogs" :key="index">
+          <tr v-else v-for="(fault, idx) in faultLogs" :key="idx">
             <td>{{ fault.name }}</td>
-            <td>{{ fault.status }}</td>
+            <!-- always red -->
+            <td class="status-offline">{{ fault.status }}</td>
             <td>{{ fault.location }}</td>
             <td>{{ fault.time }}</td>
             <td>{{ fault.date }}</td>
@@ -95,36 +99,47 @@ export default {
       sortUsage: 'All',
       liveStatus: 'All',
       devices: [
+        // Location A
         { name: 'Meter 1', type: 'VRF Aircon', location: 'Location A', accToday: '12.50', accMonth: '320.75', status: 'Online' },
         { name: 'Meter 2', type: 'VRF Aircon', location: 'Location A', accToday: '10.20', accMonth: '300.40', status: 'Online' },
         { name: 'Meter 3', type: 'VRF Aircon', location: 'Location A', accToday: '0.00', accMonth: '0.00', status: 'No Data' },
-        { name: 'Meter 4', type: 'Lighting',   location: 'Location A', accToday: '45.80', accMonth: '1200.50', status: 'Online' }
+        { name: 'Meter 4', type: 'Lighting', location: 'Location A', accToday: '45.80', accMonth: '1200.50', status: 'Online' },
+        // Location B
+        { name: 'Meter 5', type: 'Chiller', location: 'Location B', accToday: '30.10', accMonth: '850.30', status: 'Online' },
+        { name: 'Meter 6', type: 'Elevator', location: 'Location B', accToday: '5.00', accMonth: '150.00', status: 'Offline' },
+        { name: 'Meter 7', type: 'Lighting', location: 'Location B', accToday: '22.45', accMonth: '600.20', status: 'Online' },
+        // Location C
+        { name: 'Meter 8', type: 'Pump', location: 'Location C', accToday: '18.75', accMonth: '500.00', status: 'Online' },
+        { name: 'Meter 9', type: 'UPS', location: 'Location C', accToday: '8.90', accMonth: '240.60', status: 'No Data' },
+        { name: 'Meter 10', type: 'Lighting', location: 'Location C', accToday: '50.00', accMonth: '1300.80', status: 'Online' }
       ],
       faultLogs: [
-        { name: 'Meter 3', status: 'Not Working', location: 'Location A', time: '14:35', date: '2025-04-18' }
+        { name: 'Meter 3', status: 'Not Working', location: 'Location A', time: '14:35', date: '2025-04-18' },
+        { name: 'Meter 6', status: 'Offline', location: 'Location B', time: '09:12', date: '2025-07-01' },
+        { name: 'Meter 9', status: 'No Data', location: 'Location C', time: '11:45', date: '2025-06-20' }
       ]
     };
   },
   computed: {
+    locations() {
+      return [...new Set(this.devices.map(d => d.location))];
+    },
     filteredDevices() {
-      let filtered = [...this.devices];
-
+      let flt = [...this.devices];
       if (this.sortLocation !== 'All Locations') {
-        filtered = filtered.filter(d => d.location === this.sortLocation);
+        flt = flt.filter(d => d.location === this.sortLocation);
       }
       if (this.liveStatus !== 'All') {
-        if (this.liveStatus === 'Online') {
-          filtered = filtered.filter(d => d.status === 'Online');
-        } else {
-          filtered = filtered.filter(d => d.status !== 'Online');
-        }
+        flt = this.liveStatus === 'Online'
+          ? flt.filter(d => d.status === 'Online')
+          : flt.filter(d => d.status !== 'Online');
       }
       if (this.sortUsage === 'Day') {
-        filtered.sort((a, b) => parseFloat(b.accToday) - parseFloat(a.accToday));
+        flt.sort((a, b) => parseFloat(b.accToday) - parseFloat(a.accToday));
       } else if (this.sortUsage === 'Month') {
-        filtered.sort((a, b) => parseFloat(b.accMonth) - parseFloat(a.accMonth));
+        flt.sort((a, b) => parseFloat(b.accMonth) - parseFloat(a.accMonth));
       }
-      return filtered;
+      return flt;
     }
   }
 };
@@ -133,14 +148,15 @@ export default {
 <style scoped>
 .data-log-container {
   padding: 20px;
-  margin: 0 auto;
+  margin: 5% auto;
   background-color: #f9f9f9;
   border: 1px solid #ddd;
   border-radius: 10px;
-  padding-top: 5%;
 }
 
-.text-center { text-align: center; }
+.text-center {
+  text-align: center;
+}
 
 .options-bar {
   display: flex;
@@ -182,5 +198,14 @@ export default {
 
 .table tbody tr:nth-child(even) {
   background-color: #f9f9f9;
+}
+
+/* Formatter classes */
+.status-online {
+  color: green;
+}
+
+.status-offline {
+  color: red;
 }
 </style>

@@ -1,128 +1,108 @@
 <template>
-    <div class="chart-container">
-        <canvas ref="chart"></canvas>
-    </div>
+    <canvas ref="canvas"></canvas>
 </template>
 
 <script>
-import { Chart } from "chart.js/auto";
+import { Chart, registerables } from 'chart.js'
+Chart.register(...registerables)
 
 export default {
+    name: 'WaterLineChart',
     props: {
-        data: {
-            type: Array,
-            required: true,
-        },
-        labels: {
-            type: Array,
-            required: true,
-        },
-        baselineData: Array, // Accept baseline data as a prop
-        showBaseline: Boolean, // Accept a flag for showing baseline
-        type: {
-            type: String,
-            default: "line", // Default to line chart
-        },
+        labels: Array,
+        data: Array,
+        type: { type: String, default: 'line' },
+        baselineData: { type: Array, default: () => [] },
+        showBaseline: { type: Boolean, default: false },
+        yLabel: { type: String, default: '' }
+    },
+    data() {
+        return { chart: null }
     },
     mounted() {
-        this.renderChart();
+        this.renderChart()
+    },
+    beforeUnmount() {
+        if (this.chart) {
+            this.chart.destroy()
+            this.chart = null
+        }
     },
     watch: {
-        data: "renderChart",
-        labels: "renderChart",
-        baselineData: "renderChart",
-        type: "renderChart", // Watch for changes in chart type
+        labels: 'renderChart',
+        data: 'renderChart',
+        baselineData: 'renderChart',
+        showBaseline: 'renderChart',
+        type: 'renderChart',
+        yLabel: 'renderChart'
     },
     methods: {
         renderChart() {
-            if (this.chart) this.chart.destroy();
+            // Destroy previous chart safely
+            if (this.chart) {
+                this.chart.destroy()
+                this.chart = null
+            }
+            // Only render if canvas exists!
+            const ctx = this.$refs.canvas && this.$refs.canvas.getContext('2d')
+            if (!ctx) return
 
+            // Prepare datasets
             const datasets = [
                 {
-                    label: "Water Consumption", // Correct label
+                    label: 'Usage',
                     data: this.data,
-                    borderColor: "#007bff",
-                    backgroundColor: this.type === "bar" ? "rgba(0, 123, 255, 0.8)" : "rgba(0, 123, 255, 0.2)",
-                    pointBackgroundColor: "#007bff",
-                    fill: this.type !== "bar",
-                    tension: 0.4, // Smooth lines
-                    borderWidth: 2,
-                    pointRadius: this.type === "bar" ? 0 : 3,
-                },
-            ];
-
-            // Add baseline dataset if `showBaseline` is true
-            if (this.showBaseline && this.baselineData && this.baselineData.length > 0) {
-                datasets.push({
-                    label: "Baseline",
-                    data: this.baselineData,
-                    borderColor: "red", // Baseline color
-                    borderDash: [5, 5], // Dashed line
                     fill: false,
-                    tension: 0.1,
-                });
-            }
-
-            this.chart = new Chart(this.$refs.chart, {
-                type: this.type, // Use the chart type dynamically
+                    borderWidth: 2,
+                },
+                ...(this.showBaseline && this.baselineData.length
+                    ? [{
+                        label: 'Baseline',
+                        data: this.baselineData,
+                        fill: false,
+                        borderDash: [5, 5],
+                        borderWidth: 2,
+                    }]
+                    : [])
+            ]
+            this.chart = new Chart(ctx, {
+                type: this.type,
                 data: {
-                    labels: this.labels, // Labels for x-axis
-                    datasets,
+                    labels: this.labels,
+                    datasets
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true,
-                        },
-                    },
                     scales: {
                         x: {
+                            display: true,
                             ticks: {
-                                autoSkip: true,
+                                autoSkip: false,
                                 maxRotation: 45,
                                 minRotation: 0,
+                                color: '#444'
                             },
+                            grid: { display: false }
                         },
                         y: {
+                            display: true,
                             title: {
-                                display: true,
-                                text: "Water Usage", // Update Y-axis label
-                            },
-                            beginAtZero: true,
-                        },
-                    },
-                },
-            });
-        },
-    },
-    beforeUnmount() {
-        if (this.chart) this.chart.destroy();
-
-        this.chart = new Chart(this.$refs.chart, {
-            type: this.type,
-            data: {
-                labels: this.labels,
-                datasets: this.data,
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: true },
-                },
-            },
-        });
-    },
-};
+                                display: !!this.yLabel,
+                                text: this.yLabel
+                            }
+                        }
+                    }
+                }
+            })
+        }
+    }
+}
 </script>
 
 <style scoped>
-.chart-container {
-    width: 100%;
-    height: 400px;
-    margin: 0 auto;
-    position: relative;
+canvas {
+    width: 100% !important;
+    height: 100% !important;
 }
 </style>

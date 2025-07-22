@@ -79,19 +79,36 @@ export default {
                     },
                     scales: {
                         x: {
-                            ticks: {
-                                autoSkip: true,
-                                maxRotation: 45,
-                                minRotation: 0,
-                            },
-                        },
-                        y: {
+                            display: true,
                             title: {
                                 display: true,
-                                text: "Power Usage (kWh)",
+                                text: 'Time / Date',
+                                color: '#333',
+                                font: { size: 16, weight: 'bold' }
                             },
-                            beginAtZero: true,
+                            ticks: {
+                                autoSkip: false,
+                                maxRotation: 30, // or 0 for no tilt
+                                minRotation: 0,
+                                color: '#222',
+                                font: { size: 13, weight: 'bold' },
+                                padding: 10, // adds more space from axis line
+                            },
+                            grid: { display: false }
                         },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Power Usage (kWh)',
+                                color: '#333',
+                                font: { size: 14 }
+                            },
+                            ticks: {
+                                color: '#222',
+                                font: { size: 12 },
+                            }
+                        }
                     },
                 },
             });

@@ -1,7 +1,13 @@
 <template>
-    <div class="logs-container">
+    <div class="logs-container1">
+        <!-- Back Button -->
+        <button class="back-btn" @click="$router.back()">
+            <i class="fas fa-arrow-left"></i>
+            Back
+        </button>
+
         <!-- Existing Conditional Command Logs Table -->
-        <h3 class="logs-header">Conditional Command Logs</h3>
+        <h3 class="logs-headerCCL">Conditional Command Logs</h3>
         <table class="logs-table">
             <thead>
                 <tr>
@@ -167,7 +173,22 @@ export default {
     padding: 20px;
 }
 
+.logs-container1 {
+    background-color: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    color: black;
+    border-radius: 10px;
+    padding: 20px;
+    margin-top:5%;
+}
+
 .logs-header {
+    font-size: 18px;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+.logs-headerCCL {
     font-size: 18px;
     margin-bottom: 15px;
     font-weight: bold;
@@ -202,5 +223,30 @@ export default {
 .red-text {
     color: red;
     font-weight: bold;
+}
+
+.back-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    padding: 7px 18px;
+    margin-bottom: 18px;
+    cursor: pointer;
+    font-weight: 500;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    transition: background 0.2s;
+}
+
+.back-btn:hover {
+    background: #0056b3;
+}
+
+.back-btn i {
+    font-size: 16px;
 }
 </style>

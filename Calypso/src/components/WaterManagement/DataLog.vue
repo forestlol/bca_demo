@@ -30,8 +30,10 @@
                         <th>Dev EUI</th>
                         <th>Description</th>
                         <th v-if="powerUsageSortPeriod === 'all'">Total Consumption (m³)</th>
-                        <th v-if="powerUsageSortPeriod === 'all' || powerUsageSortPeriod === 'daily'">Daily Consumption (m³)</th>
-                        <th v-if="powerUsageSortPeriod === 'all' || powerUsageSortPeriod === 'monthly'">Monthly Consumption (m³)</th>
+                        <th v-if="powerUsageSortPeriod === 'all' || powerUsageSortPeriod === 'daily'">Daily Consumption
+                            (m³)</th>
+                        <th v-if="powerUsageSortPeriod === 'all' || powerUsageSortPeriod === 'monthly'">Monthly
+                            Consumption (m³)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -40,8 +42,10 @@
                         <td>{{ device.dev_eui || 'N/A' }}</td>
                         <td>{{ device.category || getCategory(device) }}</td>
                         <td v-if="powerUsageSortPeriod === 'all'">{{ device.totalConsumption }} m³</td>
-                        <td v-if="powerUsageSortPeriod === 'all' || powerUsageSortPeriod === 'daily'">{{ device.dailyConsumption }} m³</td>
-                        <td v-if="powerUsageSortPeriod === 'all' || powerUsageSortPeriod === 'monthly'">{{ device.monthlyConsumption }} m³</td>
+                        <td v-if="powerUsageSortPeriod === 'all' || powerUsageSortPeriod === 'daily'">{{
+                            device.dailyConsumption }} m³</td>
+                        <td v-if="powerUsageSortPeriod === 'all' || powerUsageSortPeriod === 'monthly'">{{
+                            device.monthlyConsumption }} m³</td>
                     </tr>
                 </tbody>
             </table>
@@ -108,7 +112,7 @@ export default {
     },
     computed: {
         faultDevices() {
-            const EUIs = ['8254812307000003','8254812211000171','8254812211000172'];
+            const EUIs = ['8254812307000003', '8254812211000171', '8254812211000172'];
             return this.devices.filter(d => !EUIs.includes(d.dev_eui) &&
                 parseFloat(d.totalConsumption) === 0 &&
                 parseFloat(d.dailyConsumption) === 0 &&
@@ -116,7 +120,7 @@ export default {
             );
         },
         uniqueLocations() {
-            const EUIs = ['8254812307000003','8254812211000171','8254812211000172'];
+            const EUIs = ['8254812307000003', '8254812211000171', '8254812211000172'];
             return [...new Set(
                 this.devices.map(d => EUIs.includes(d.dev_eui)
                     ? 'WM01- Main Pipe Incoming PUB'
@@ -126,32 +130,32 @@ export default {
         filteredDevices() {
             if (!this.selectedLocation) return this.devices;
             return this.devices.filter(d => {
-                const loc = ['8254812307000003','8254812211000171','8254812211000172'].includes(d.dev_eui)
+                const loc = ['8254812307000003', '8254812211000171', '8254812211000172'].includes(d.dev_eui)
                     ? 'WM01- Main Pipe Incoming PUB'
                     : d.device_name;
                 return loc === this.selectedLocation;
             });
         },
         combinedMain6() {
-            const EUIs = ['8254812307000003','8254812211000171','8254812211000172'];
+            const EUIs = ['8254812307000003', '8254812211000171', '8254812211000172'];
             const group = this.devices.filter(d => EUIs.includes(d.dev_eui));
             if (!group.length) return null;
-            const sum = arr => arr.reduce((s,v) => s + parseFloat(v||0), 0);
+            const sum = arr => arr.reduce((s, v) => s + parseFloat(v || 0), 0);
             return {
                 device_name: 'WM01- Main Pipe Incoming PUB',
-                totalConsumption: sum(group.map(d=>d.totalConsumption)).toFixed(2),
-                dailyConsumption: sum(group.map(d=>d.dailyConsumption)).toFixed(2),
-                monthlyConsumption: sum(group.map(d=>d.monthlyConsumption)).toFixed(2)
+                totalConsumption: sum(group.map(d => d.totalConsumption)).toFixed(2),
+                dailyConsumption: sum(group.map(d => d.dailyConsumption)).toFixed(2),
+                monthlyConsumption: sum(group.map(d => d.monthlyConsumption)).toFixed(2)
             };
         },
         totalWaterConsumption() {
-            return this.devices.reduce((s,d) => s + parseFloat(d.totalConsumption||0), 0).toFixed(2);
+            return this.devices.reduce((s, d) => s + parseFloat(d.totalConsumption || 0), 0).toFixed(2);
         },
         totalDailyConsumption() {
-            return this.devices.reduce((s,d) => s + parseFloat(d.dailyConsumption||0), 0).toFixed(2);
+            return this.devices.reduce((s, d) => s + parseFloat(d.dailyConsumption || 0), 0).toFixed(2);
         },
         totalMonthlyConsumption() {
-            return this.devices.reduce((s,d) => s + parseFloat(d.monthlyConsumption||0), 0).toFixed(2);
+            return this.devices.reduce((s, d) => s + parseFloat(d.monthlyConsumption || 0), 0).toFixed(2);
         },
         allSortedDevices() {
             let arr = [];
@@ -166,29 +170,29 @@ export default {
                     monthlyConsumption: this.combinedMain6.monthlyConsumption
                 });
             }
-            const faultEUIs = this.faultDevices.map(d=>d.dev_eui);
+            const faultEUIs = this.faultDevices.map(d => d.dev_eui);
             arr = arr.concat(
-                this.filteredDevices.filter(d=> !['8254812307000003','8254812211000171','8254812211000172'].includes(d.dev_eui) && !faultEUIs.includes(d.dev_eui))
+                this.filteredDevices.filter(d => !['8254812307000003', '8254812211000171', '8254812211000172'].includes(d.dev_eui) && !faultEUIs.includes(d.dev_eui))
             );
-            const key = this.powerUsageSortPeriod==='daily'?'dailyConsumption':
-                        this.powerUsageSortPeriod==='monthly'?'monthlyConsumption':'totalConsumption';
-            return arr.sort((a,b)=>parseFloat(b[key]) - parseFloat(a[key]));
+            const key = this.powerUsageSortPeriod === 'daily' ? 'dailyConsumption' :
+                this.powerUsageSortPeriod === 'monthly' ? 'monthlyConsumption' : 'totalConsumption';
+            return arr.sort((a, b) => parseFloat(b[key]) - parseFloat(a[key]));
         }
     },
     methods: {
         getCategory(device) {
             for (const [cat, list] of Object.entries(this.categorizedDevices)) {
-                if (list.some(d=>d.dev_eui===device.dev_eui)) return cat;
+                if (list.some(d => d.dev_eui === device.dev_eui)) return cat;
             }
             return 'Unknown';
         },
         fetchDevicesData() {
             this.devices = Object.values(this.categorizedDevices).flat();
             // Hardcoded consumption values:
-            this.devices.forEach((d,i) => {
-                d.totalConsumption   = (100   + i*10).toFixed(2);
-                d.dailyConsumption   = (10    + i*1).toFixed(2);
-                d.monthlyConsumption = (50    + i*5).toFixed(2);
+            this.devices.forEach((d, i) => {
+                d.totalConsumption = (100 + i * 10).toFixed(2);
+                d.dailyConsumption = (10 + i * 1).toFixed(2);
+                d.monthlyConsumption = (50 + i * 5).toFixed(2);
             });
         }
     },
@@ -199,15 +203,62 @@ export default {
 </script>
 
 <style scoped>
-.data-log-container { padding: 20px; margin: 0 auto; background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 10px;     padding-top: 5%;}
-.text-center { text-align: center; }
-.table-container { margin-bottom: 20px; }
-.table { width: 100%; border-collapse: collapse; }
+.data-log-container {
+    padding: 20px;
+    margin: 5% auto;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.table-container {
+    margin-bottom: 20px;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
 .table th,
-.table td { text-align: left; padding: 10px; border: 1px solid #ddd; }
-.table th { background-color: #f1f1f1; font-weight: bold; }
-.table tbody tr:nth-child(even) { background-color: #f9f9f9; }
-.options-bar { display: flex; justify-content: space-between; align-items: center; background-color: #f4f4f4; padding: 10px 20px; margin-bottom: 20px; border-radius: 5px; border: 1px solid #ddd; }
-.option { display: flex; align-items: center; gap: 10px; }
-.fault-text { color: red; font-weight: bold; }
+.table td {
+    text-align: left;
+    padding: 10px;
+    border: 1px solid #ddd;
+}
+
+.table th {
+    background-color: #f1f1f1;
+    font-weight: bold;
+}
+
+.table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.options-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f4f4f4;
+    padding: 10px 20px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+}
+
+.option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.fault-text {
+    color: red;
+    font-weight: bold;
+}
 </style>
